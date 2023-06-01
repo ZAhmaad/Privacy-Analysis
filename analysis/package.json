@@ -1,0 +1,21 @@
+{
+  "name": "@yuantijs/analysis",
+  "version": "1.0.0",
+  "main": "build/index.js",
+  "scripts": {
+    "compile": "npx tsc -p ./runtime/tsconfig.json && npx tsc -b",
+    "start": "node --max-old-space-size=8000 build/index.js"
+  },
+  "devDependencies": {
+    "@types/babel__core": "^7.20.0"
+  },
+  "dependencies": {
+    "@babel/core": "^7.21.0",
+    "@babel/preset-env": "^7.20.2",
+    "@yuantijs/core": "^1.0.0",
+    "jalangi2": "^0.2.6",
+    "minimist": "^1.2.8",
+    "mockttp": "^3.7.0",
+    "puppeteer": "^19.7.2"
+  }
+}
