@@ -1,0 +1,10 @@
+{
+  "extends": "@tsconfig/recommended/tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src/",
+    "outDir": "./build/",
+    "declaration": true,
+    "composite": true
+  },
+  "include": ["./src/"]
+}
