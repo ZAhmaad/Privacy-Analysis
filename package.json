@@ -1,0 +1,17 @@
+{
+  "name": "yuantijs",
+  "version": "1.0.0",
+  "description": "Dynamic taint tracking framework for JavaScript based on source code-level instrumentation",
+  "workspaces": [
+    "core",
+    "analysis",
+    "empirical"
+  ],
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.2",
+    "@types/node": "^18.14.0",
+    "typescript": "^4.9.5"
+  },
+  "author": "Samuele Casarin",
+  "license": "ISC"
+}
