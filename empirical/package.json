@@ -1,0 +1,20 @@
+{
+  "name": "@yuantijs/empirical",
+  "version": "1.0.0",
+  "main": "build/classify.js",
+  "scripts": {
+    "download-data": "./download-data.sh",
+    "compile": "npx tsc -b",
+    "start-classify": "node build/classify.js",
+    "start-count": "node build/count.js"
+  },
+  "dependencies": {
+    "@yuantijs/core": "^1.0.0",
+    "minimist": "^1.2.8",
+    "psl": "^1.9.0",
+    "re2": "^1.18.0"
+  },
+  "devDependencies": {
+    "@types/psl": "^1.1.0"
+  }
+}
