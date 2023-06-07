@@ -1,5 +1,4 @@
-import { Browser, Frame, Page, TimeoutError, HTTPResponse } from "puppeteer";
-import { NetworkInterceptor, Request } from 'puppeteer-network-interception';
+import { Browser, Frame, Page, TimeoutError } from "puppeteer";
 import { setupPageRequestInterceptor } from "./page-request-interceptor";
 import AnalysisLogger from "./analysis-logger";
 import assert, { AssertionError } from "assert";
@@ -9,6 +8,8 @@ import {
   validateCompactTrackingResult,
   validateStorageSnapshot,
   StorageSnapshot,
+  CookieSnapshot,
+  CompactRequest,
 } from "@yuantijs/core";
 
 const TIMEOUT_MS = 30 * 1000;
@@ -196,128 +197,66 @@ class AnalysisRunner {
     }
   }
 
+  // Collecting the first and third party cookies.
 
-
-//  Capturing all the Web request urls a site made and their respective status codes. I didn't test it. 
-// This need to be checked and tested
-  
-  async #captureRequestURLsWithStatusCode(
+  async #evaluateCookieSnapshotRecord(
     page: Page
-  ) : Promise<Record<string, RequestSnapshot>> {
-    
-  
-    // Enable request interception
-    const interceptor = new NetworkInterceptor(page);
-    await interceptor.enable();
-  
-    // Create an empty array to store the captured requests
-    const capturedRequests: { url: string; status: number | null }[] = [];
-  
-    // Listen for all requests and store their URLs and status codes
-    interceptor.on('request', (request: Request) => {
-      capturedRequests.push({
-        url: request.url(),
-        status: null, // Will be filled later with the status code
-      });
-  
-      request.continue();
-    });
-  
-    // Listen for the response and update the status code
-    interceptor.on('response', (response: HTTPResponse) => {
-      const index = capturedRequests.findIndex((request) => request.url === response.url());
-      if (index !== -1) {
-        capturedRequests[index].status = response.status();
-      }
-    });
-  
+  ): Promise<Record<string, CookieSnapshot>> {
+    const result: Record<string, CookieSnapshot> = {};
 
-  }
-
-
-// Collecting the first and third party cookies. This needs to checked and tested.
-
-async #evaluateCookieSnapshotRecord(page:Page): Promise<Record<string, CookieSnapshot>> {
-  const result: Record<string, CookieSnapshot> = {};
-  
-  // Enable request interception
-  await page.setRequestInterception(true);
-
-  // Create a Set to store unique domains
-  const domains = new Set<string>();
-
-  // Listen to requests
-  page.on('request', (interceptedRequest) => {
-    const url = interceptedRequest.url();
-    const isThirdParty = !url.includes(page.url());
-
-    if (isThirdParty) {
-      const domain = new URL(url).hostname;
-      domains.add(domain);
+    for (const frame of page.frames()) {
+      const url = (() => {
+        try {
+          return new URL(frame.url());
+        } catch (e) {
+          return null;
+        }
+      })();
+      if (!url) continue;
+      const origin = url.origin;
+      if (origin in result) continue;
+      const cookies = await page.cookies(origin);
+      result[origin] = Object.fromEntries(
+        cookies.map((cookie) => [cookie.name, cookie.value])
+      );
     }
 
-    interceptedRequest.continue();
-  });
-
-  for (const frame of page.frames()) {
-    if (frame.isDetached()) continue;
-    const url = (() => {
-      try {
-        return new URL(frame.url());
-      } catch (e) {
-        return null;
-      }
-    })();
-    if (!url) continue;
-    const origin = url.origin;
-    if (origin in result) continue;
-    const evaled = await frame.evaluate(() => {
-      const cookies = document.cookie.split(';').map(cookie => cookie.trim());
-      const snapshot = {};
-      for (const cookie of cookies) {
-        const [name, value] = cookie.split('=');
-        snapshot[name] = value;
-      }
-      return snapshot;
-    });
-    result[origin] = evaled;
+    return result;
   }
 
-  // Collect third-party cookies
-  const thirdPartyCookies = await Promise.all(
-    Array.from(domains).map(async (domain) => {
-      const cookies = await page.cookies(`https://${domain}`);
-      return { domain, cookies };
-    })
-  );
+  // Capturing all the Web request urls a site made and their respective status codes.
 
- 
+  async #startRequestRecording(page: Page): Promise<() => CompactRequest[]> {
+    const requests: CompactRequest[] = [];
 
-  return result;
-}
+    await page.setRequestInterception(true);
 
-  
+    page.on("request", (request) => {
+      request.continue();
+    });
 
-  
-  
+    page.on("response", (response) => {
+      requests.push({ url: response.url(), status: response.status() });
+    });
 
+    return () => [...requests];
+  }
 
-
-
-  
-
-  // Taking StorageSnapShot in case of Chrome
+  // Taking StorageSnapshot in case of Chrome
 
   async #runSiteAnalysisCA(onSuccess?: () => Promise<void>): Promise<void> {
-    const thisRunner = this;
-
     let success: boolean = false;
-    await this.#openPage(this.#browserManager.get("CA"), async function (page) {
-      await thisRunner.#navigate(page);
-      await thisRunner.#delay();
-      thisRunner.#logger.setStorageSnapshotRecordA(
-        await thisRunner.#evaluateStorageSnapshotRecord(page)
+    await this.#openPage(this.#browserManager.get("CA"), async (page) => {
+      const getRequestCollection = await this.#startRequestRecording(page);
+      await this.#navigate(page);
+      await this.#delay();
+      this.#logger.setStorageSnapshotRecordChrome(
+        await this.#evaluateStorageSnapshotRecord(page)
       );
+      this.#logger.setCookieSnapshotRecordBrave(
+        await this.#evaluateCookieSnapshotRecord(page)
+      );
+      this.#logger.setRequestCollectionBrave(getRequestCollection());
       success = true;
     });
 
@@ -326,76 +265,60 @@ async #evaluateCookieSnapshotRecord(page:Page): Promise<Record<string, CookieSna
     }
   }
 
-
-    // Taking StorageSnapShot in case of Brave
+  // Taking snapshots in case of Brave
 
   async #runSiteAnalysisBA(): Promise<void> {
-    const thisRunner = this;
-
-    await this.#openPage(this.#browserManager.get("BA"), async function (page) {
-      await thisRunner.#navigate(page);
-      await thisRunner.#delay();
-      thisRunner.#logger.setStorageSnapshotCollectionB1(
-        await thisRunner.#evaluateStorageSnapshotRecord(page)
+    await this.#openPage(this.#browserManager.get("BA"), async (page) => {
+      const getRequestCollection = await this.#startRequestRecording(page);
+      await this.#navigate(page);
+      await this.#delay();
+      this.#logger.setStorageSnapshotRecordBrave(
+        await this.#evaluateStorageSnapshotRecord(page)
       );
+      this.#logger.setCookieSnapshotRecordBrave(
+        await this.#evaluateCookieSnapshotRecord(page)
+      );
+      this.#logger.setRequestCollectionBrave(getRequestCollection());
     });
-
-    // await this.#openPage(this.#browserManager.get("B"), async function (page) {
-    //   await thisRunner.#navigate(page);
-    //   await thisRunner.#delay();
-    //   thisRunner.#logger.setStorageSnapshotCollectionB2(
-    //     await thisRunner.#evaluateStorageSnapshotRecord(page)
-    //   );
-    // });
   }
 
-
-    // Taking Tracking flows in case of Chrome
+  // Taking Tracking flows in case of Chrome
 
   async #runSiteAnalysisCT(): Promise<void> {
-    const thisRunner = this;
-
-    await this.#openPage(this.#browserManager.get("CT"), async function (page) {
-      await setupPageRequestInterceptor(page, thisRunner.#logger);
-      await thisRunner.#navigate(page, TIMEOUT_MS_T);
-      await thisRunner.#delay(TIMEOUT_MS_DELAY_T);
-      thisRunner.#logger.setTrackingResultRecord(
-        await thisRunner.#evaluateTrackingResultRecord(page)
+    await this.#openPage(this.#browserManager.get("CT"), async (page) => {
+      await setupPageRequestInterceptor(page, this.#logger);
+      await this.#navigate(page, TIMEOUT_MS_T);
+      await this.#delay(TIMEOUT_MS_DELAY_T);
+      this.#logger.setTrackingResultRecordChrome(
+        await this.#evaluateTrackingResultRecord(page)
       );
     });
 
     // this empty navigation should ensure that all cookies/storage items will be eventually set
-    await this.#openPage(this.#browserManager.get("CT"), async function (page) {
-      await thisRunner.#navigate(page);
-      await thisRunner.#delay();
+    await this.#openPage(this.#browserManager.get("CT"), async (page) => {
+      await this.#navigate(page);
+      await this.#delay();
     });
-
   }
-
 
   // Taking Tracking flows in case of Brave
 
   async #runSiteAnalysisBT(): Promise<void> {
-    const thisRunner = this;
-
-    await this.#openPage(this.#browserManager.get("BT"), async function (page) {
-      await setupPageRequestInterceptor(page, thisRunner.#logger);
-      await thisRunner.#navigate(page, TIMEOUT_MS_T);
-      await thisRunner.#delay(TIMEOUT_MS_DELAY_T);
-      thisRunner.#logger.setTrackingResultRecord(
-        await thisRunner.#evaluateTrackingResultRecord(page)
+    await this.#openPage(this.#browserManager.get("BT"), async (page) => {
+      await setupPageRequestInterceptor(page, this.#logger);
+      await this.#navigate(page, TIMEOUT_MS_T);
+      await this.#delay(TIMEOUT_MS_DELAY_T);
+      this.#logger.setTrackingResultRecordBrave(
+        await this.#evaluateTrackingResultRecord(page)
       );
     });
 
     // this empty navigation should ensure that all cookies/storage items will be eventually set
-    await this.#openPage(this.#browserManager.get("BT"), async function (page) {
-      await thisRunner.#navigate(page);
-      await thisRunner.#delay();
+    await this.#openPage(this.#browserManager.get("BT"), async (page) => {
+      await this.#navigate(page);
+      await this.#delay();
     });
-
   }
-
-
 
   async runAnalysis() {
     await this.#runSiteAnalysisCA(async () => {

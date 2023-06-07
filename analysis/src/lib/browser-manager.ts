@@ -84,7 +84,7 @@ class BrowserManager {
       defaultViewport: null,
       headless: false, 
       pipe: true,
-      userDataDir: path.join("chromeprofiles", key),
+      userDataDir: path.join("profiles", key),
     });
     return browser;
   }
@@ -109,9 +109,9 @@ class BrowserManager {
         : {}),
       defaultViewport: null,
       headless: false, 
-      executablePath: '/Applications/Brave Browser 3.app/Contents/MacOS/Brave Browser',
+      executablePath: '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
       pipe: true,
-      userDataDir: path.join("braveprofiles", key),
+      userDataDir: path.join("profiles", key),
     });
     return browser;
   }

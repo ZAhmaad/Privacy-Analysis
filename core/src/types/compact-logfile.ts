@@ -67,7 +67,6 @@ export { CompactTrackingResult, validateCompactTrackingResult };
 type CompactLogfile = {
   site: string;
   trackingResultRecord: Record<string, CompactTrackingResult | null>;
-  trackingResultRecordBrave: Record<string, CompactTrackingResult | null>;
   storageSnapshotRecordA: Record<string, StorageSnapshot | null>;
   storageSnapshotRecordB1: Record<string, StorageSnapshot | null>;
   storageSnapshotRecordB2: Record<string, StorageSnapshot | null>;

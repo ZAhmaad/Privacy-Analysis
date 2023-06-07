@@ -3,8 +3,10 @@ import path from "path";
 import {
   AnalysisError,
   CompactTrackingResult,
-  CompactLogfile,
   StorageSnapshot,
+  PACompactLogfile,
+  CookieSnapshot,
+  CompactRequest,
 } from "@yuantijs/core";
 
 class AnalysisLogger {
@@ -12,14 +14,12 @@ class AnalysisLogger {
   #site: string;
   #trackingResultRecordChrome: Record<string, CompactTrackingResult | null>;
   #trackingResultRecordBrave: Record<string, CompactTrackingResult | null>;
-  // storageSnapshotRecordA is for Chrome
-  #storageSnapshotRecordA: Record<string, StorageSnapshot | null>;   
-   // storageSnapshotRecordB1 is for Chrome
-  #storageSnapshotRecordB1: Record<string, StorageSnapshot | null>;
-  #cookieSnapshotRecordChrome: Record<string, StorageSnapshot | null>;
-  #cookieSnapshotRecordBrave: Record<string, StorageSnapshot | null>;
-  #requestSnapshotRecordChrome: Record<string, StorageSnapshot | null>;
-  #requestSnapshotRecordBrave: Record<string, StorageSnapshot | null>;
+  #storageSnapshotRecordChrome: Record<string, StorageSnapshot | null>;
+  #storageSnapshotRecordBrave: Record<string, StorageSnapshot | null>;
+  #cookieSnapshotRecordChrome: Record<string, CookieSnapshot | null>;
+  #cookieSnapshotRecordBrave: Record<string, CookieSnapshot | null>;
+  #requestCollectionChrome: CompactRequest[];
+  #requestCollectionBrave: CompactRequest[];
   #errorCollection: AnalysisError[];
 
   constructor(analysisName: string, site: string) {
@@ -27,12 +27,12 @@ class AnalysisLogger {
     this.#site = site;
     this.#trackingResultRecordChrome = {};
     this.#trackingResultRecordBrave = {};
-    this.#storageSnapshotRecordA = {};
-    this.#storageSnapshotRecordB1 = {};
+    this.#storageSnapshotRecordChrome = {};
+    this.#storageSnapshotRecordBrave = {};
     this.#cookieSnapshotRecordChrome = {};
     this.#cookieSnapshotRecordBrave = {};
-    this.#requestSnapshotRecordChrome = {};
-    this.#requestSnapshotRecordBrave = {};
+    this.#requestCollectionChrome = [];
+    this.#requestCollectionBrave = [];
     this.#errorCollection = [];
   }
 
@@ -49,48 +49,43 @@ class AnalysisLogger {
   }
 
   setStorageSnapshotRecordChrome(
-    storageSnapshotCollection: Record<string, StorageSnapshot | null>
+    storageSnapshotRecord: Record<string, StorageSnapshot | null>
   ): void {
-    this.#storageSnapshotRecordA = storageSnapshotCollection;
+    this.#storageSnapshotRecordChrome = storageSnapshotRecord;
   }
 
-  setStorageSnapshotCollectionBrave(
-    storageSnapshotCollection: Record<string, StorageSnapshot | null>
+  setStorageSnapshotRecordBrave(
+    storageSnapshotRecord: Record<string, StorageSnapshot | null>
   ): void {
-    this.#storageSnapshotRecordB1 = storageSnapshotCollection;
+    this.#storageSnapshotRecordBrave = storageSnapshotRecord;
   }
 
   // Setting cookie Snapshot for Chrome
 
-  setCookieSnapshotCollectionChrome(
-    cookieSnapshotCollection: Record<string, CookieSnapshot | null>
+  setCookieSnapshotRecordChrome(
+    cookieSnapshotRecord: Record<string, CookieSnapshot | null>
   ): void {
-    this.#cookieSnapshotRecordChrome = cookieSnapshotCollection;
+    this.#cookieSnapshotRecordChrome = cookieSnapshotRecord;
   }
 
-    // Setting cookie Snapshot for brave
+  // Setting cookie Snapshot for brave
 
-  setCookieSnapshotCollectionBrave(
-    cookieSnapshotCollection: Record<string, CookieSnapshot | null>
+  setCookieSnapshotRecordBrave(
+    cookieSnapshotRecord: Record<string, CookieSnapshot | null>
   ): void {
-    this.#cookieSnapshotRecordBrave = cookieSnapshotCollection;
+    this.#cookieSnapshotRecordBrave = cookieSnapshotRecord;
   }
 
-   // Setting all the request urls and status codes Snapshot for Chrome
+  // Setting all the request urls and status codes Snapshot for Chrome
 
-
-  setRequestSnapshotCollectionChrome(
-    requestSnapshotCollection: Record<string, RequestSnapshot | null>
-  ): void {
-    this.#requestSnapshotRecordChrome = requestSnapshotCollection;
+  setRequestCollectionChrome(requestCollection: CompactRequest[]): void {
+    this.#requestCollectionChrome = requestCollection;
   }
 
-    // Setting all the request urls and status codes Snapshot for brave
+  // Setting all the request urls and status codes Snapshot for brave
 
-  setRequestSnapshotCollectionBrave(
-    requestSnapshotCollection: Record<string, RequestSnapshot | null>
-  ): void {
-    this.#requestSnapshotRecordBrave = requestSnapshotCollection;
+  setRequestCollectionBrave(requestCollection: CompactRequest[]): void {
+    this.#requestCollectionBrave = requestCollection;
   }
 
   addError(error: AnalysisError) {
@@ -98,16 +93,16 @@ class AnalysisLogger {
   }
 
   async persist(): Promise<void> {
-    const compactLogfile: CompactLogfile = {
+    const compactLogfile: PACompactLogfile = {
       site: this.#site,
       trackingResultRecordChrome: this.#trackingResultRecordChrome,
       trackingResultRecordBrave: this.#trackingResultRecordBrave,
-      storageSnapshotRecordA: this.#storageSnapshotRecordA,
-      storageSnapshotRecordB1: this.#storageSnapshotRecordB1,
+      storageSnapshotRecordChrome: this.#storageSnapshotRecordChrome,
+      storageSnapshotRecordBrave: this.#storageSnapshotRecordBrave,
       cookieSnapshotRecordChrome: this.#cookieSnapshotRecordChrome,
       cookieSnapshotRecordBrave: this.#cookieSnapshotRecordBrave,
-      requestSnapshotRecordChrome: this.#requestSnapshotRecordChrome,
-      requestSnapshotRecordBrave: this.#requestSnapshotRecordBrave,
+      requestCollectionChrome: this.#requestCollectionChrome,
+      requestCollectionBrave: this.#requestCollectionBrave,
       errorCollection: this.#errorCollection,
     };
     await fsPromises.writeFile(

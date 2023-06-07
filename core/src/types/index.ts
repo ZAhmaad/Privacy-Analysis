@@ -6,3 +6,4 @@ export * from "./label";
 export * from "./location";
 export * from "./logfile";
 export * from "./storage-snapshot";
+export * from "./privacy-analysis";
