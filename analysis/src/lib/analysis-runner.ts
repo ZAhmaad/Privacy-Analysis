@@ -2,7 +2,7 @@ import { Browser, Frame, Page, TimeoutError } from "puppeteer";
 import { setupPageRequestInterceptor } from "./page-request-interceptor";
 import AnalysisLogger from "./analysis-logger";
 import assert, { AssertionError } from "assert";
-import BrowserManager from "./browser-manager";
+import BrowserManager, { BrowserKey } from "./browser-manager";
 import {
   CompactTrackingResult,
   validateCompactTrackingResult,
@@ -11,6 +11,24 @@ import {
   CookieSnapshot,
   CompactRequest,
 } from "@yuantijs/core";
+
+interface AnalysisSpecA {
+  browserKeyA: BrowserKey;
+  setStorageSnapshotRecord(
+    storageSnapshotRecord: Record<string, StorageSnapshot | null>
+  ): void;
+  setCookieSnapshotRecord(
+    cookieSnapshotRecord: Record<string, CookieSnapshot | null>
+  ): void;
+  setRequestCollection(requestCollection: CompactRequest[]): void;
+}
+
+interface AnalysisSpecT {
+  browserKeyT: BrowserKey;
+  setTrackingResultRecord(
+    trackingResultRecord: Record<string, CompactTrackingResult | null>
+  ): void;
+}
 
 const TIMEOUT_MS = 30 * 1000;
 
@@ -242,50 +260,28 @@ class AnalysisRunner {
     return () => [...requests];
   }
 
-  // Taking StorageSnapshot in case of Chrome
-
-  async #runSiteAnalysisCA(onSuccess?: () => Promise<void>): Promise<void> {
-    let success: boolean = false;
-    await this.#openPage(this.#browserManager.get("CA"), async (page) => {
-      const getRequestCollection = await this.#startRequestRecording(page);
-      await this.#navigate(page);
-      await this.#delay();
-      this.#logger.setStorageSnapshotRecordChrome(
-        await this.#evaluateStorageSnapshotRecord(page)
-      );
-      this.#logger.setCookieSnapshotRecordBrave(
-        await this.#evaluateCookieSnapshotRecord(page)
-      );
-      this.#logger.setRequestCollectionBrave(getRequestCollection());
-      success = true;
-    });
-
-    if (success && onSuccess) {
-      await onSuccess();
-    }
+  async #runSiteAnalysisA(analysisSpecA: AnalysisSpecA): Promise<void> {
+    await this.#openPage(
+      this.#browserManager.get(analysisSpecA.browserKeyA),
+      async (page) => {
+        const getRequestCollection = await this.#startRequestRecording(page);
+        await this.#navigate(page);
+        await this.#delay();
+        analysisSpecA.setStorageSnapshotRecord(
+          await this.#evaluateStorageSnapshotRecord(page)
+        );
+        analysisSpecA.setCookieSnapshotRecord(
+          await this.#evaluateCookieSnapshotRecord(page)
+        );
+        analysisSpecA.setRequestCollection(getRequestCollection());
+      }
+    );
   }
 
-  // Taking snapshots in case of Brave
+  async #runSiteAnalysisT(analysisSpecT: AnalysisSpecT): Promise<void> {
+    const browser = this.#browserManager.get(analysisSpecT.browserKeyT);
 
-  async #runSiteAnalysisBA(): Promise<void> {
-    await this.#openPage(this.#browserManager.get("BA"), async (page) => {
-      const getRequestCollection = await this.#startRequestRecording(page);
-      await this.#navigate(page);
-      await this.#delay();
-      this.#logger.setStorageSnapshotRecordBrave(
-        await this.#evaluateStorageSnapshotRecord(page)
-      );
-      this.#logger.setCookieSnapshotRecordBrave(
-        await this.#evaluateCookieSnapshotRecord(page)
-      );
-      this.#logger.setRequestCollectionBrave(getRequestCollection());
-    });
-  }
-
-  // Taking Tracking flows in case of Chrome
-
-  async #runSiteAnalysisCT(): Promise<void> {
-    await this.#openPage(this.#browserManager.get("CT"), async (page) => {
+    await this.#openPage(browser, async (page) => {
       await setupPageRequestInterceptor(page, this.#logger);
       await this.#navigate(page, TIMEOUT_MS_T);
       await this.#delay(TIMEOUT_MS_DELAY_T);
@@ -295,37 +291,59 @@ class AnalysisRunner {
     });
 
     // this empty navigation should ensure that all cookies/storage items will be eventually set
-    await this.#openPage(this.#browserManager.get("CT"), async (page) => {
-      await this.#navigate(page);
-      await this.#delay();
-    });
-  }
-
-  // Taking Tracking flows in case of Brave
-
-  async #runSiteAnalysisBT(): Promise<void> {
-    await this.#openPage(this.#browserManager.get("BT"), async (page) => {
-      await setupPageRequestInterceptor(page, this.#logger);
-      await this.#navigate(page, TIMEOUT_MS_T);
-      await this.#delay(TIMEOUT_MS_DELAY_T);
-      this.#logger.setTrackingResultRecordBrave(
-        await this.#evaluateTrackingResultRecord(page)
-      );
-    });
-
-    // this empty navigation should ensure that all cookies/storage items will be eventually set
-    await this.#openPage(this.#browserManager.get("BT"), async (page) => {
+    await this.#openPage(browser, async (page) => {
       await this.#navigate(page);
       await this.#delay();
     });
   }
 
   async runAnalysis() {
-    await this.#runSiteAnalysisCA(async () => {
-      await this.#runSiteAnalysisBA();
-      await this.#runSiteAnalysisCT();
-      await this.#runSiteAnalysisBT();
-    });
+    const chromeAnalysisSpecA: AnalysisSpecA = {
+      browserKeyA: "CA",
+      setStorageSnapshotRecord: (storageSnapshotRecord) => {
+        this.#logger.setStorageSnapshotRecordChrome(storageSnapshotRecord);
+      },
+      setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+        this.#logger.setCookieSnapshotRecordChrome(cookieSnapshotRecord);
+      },
+      setRequestCollection: (requestCollection) => {
+        this.#logger.setRequestCollectionChrome(requestCollection);
+      },
+    };
+
+    const chromeAnalysisSpecT: AnalysisSpecT = {
+      browserKeyT: "CT",
+      setTrackingResultRecord: (trackingResultRecord) => {
+        this.#logger.setTrackingResultRecordChrome(trackingResultRecord);
+      },
+    };
+
+    const braveAnalysisSpecA: AnalysisSpecA = {
+      browserKeyA: "BA",
+      setStorageSnapshotRecord: (storageSnapshotRecord) => {
+        this.#logger.setStorageSnapshotRecordBrave(storageSnapshotRecord);
+      },
+      setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+        this.#logger.setCookieSnapshotRecordBrave(cookieSnapshotRecord);
+      },
+      setRequestCollection: (requestCollection) => {
+        this.#logger.setRequestCollectionBrave(requestCollection);
+      },
+    };
+
+    const braveAnalysisSpecT: AnalysisSpecT = {
+      browserKeyT: "BT",
+      setTrackingResultRecord: (trackingResultRecord) => {
+        this.#logger.setTrackingResultRecordBrave(trackingResultRecord);
+      },
+    };
+
+    await this.#runSiteAnalysisA(chromeAnalysisSpecA);
+    await Promise.allSettled([
+      this.#runSiteAnalysisA(braveAnalysisSpecA),
+      this.#runSiteAnalysisT(chromeAnalysisSpecT),
+      this.#runSiteAnalysisT(braveAnalysisSpecT),
+    ]);
   }
 }
 

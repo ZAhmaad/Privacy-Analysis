@@ -3,8 +3,10 @@ import path from "path";
 import puppeteer, { Browser } from "puppeteer";
 
 // Define four browsers: CA and CT are for Chrome and BA and BT are brave
-type BrowserStore = { CA: Browser;  CT: Browser; BA: Browser;  BT: Browser };
+type BrowserStore = { CA: Browser; CT: Browser; BA: Browser; BT: Browser };
 type BrowserKey = keyof BrowserStore;
+
+export { BrowserKey };
 
 class BrowserManager {
   #proxyPort: number;
@@ -55,8 +57,6 @@ class BrowserManager {
     };
   }
 
-  
-
   async closeAll() {
     if (!this.#browsers) return;
     for (const key of Object.keys(this.#browsers)) {
@@ -64,7 +64,7 @@ class BrowserManager {
     }
   }
 
-// Initializting Chrome
+  // Initializting Chrome
 
   async #launchBrowserChrome(
     key: BrowserKey,
@@ -82,13 +82,12 @@ class BrowserManager {
           }
         : {}),
       defaultViewport: null,
-      headless: false, 
+      headless: false,
       pipe: true,
       userDataDir: path.join("profiles", key),
     });
     return browser;
   }
-
 
   // Initializing Brave
 
@@ -108,15 +107,14 @@ class BrowserManager {
           }
         : {}),
       defaultViewport: null,
-      headless: false, 
-      executablePath: '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+      headless: false,
+      executablePath:
+        "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
       pipe: true,
       userDataDir: path.join("profiles", key),
     });
     return browser;
   }
-
-  
 }
 
 export default BrowserManager;
