@@ -182,6 +182,7 @@ class AnalysisRunner {
         })();
         if (!url) continue;
         const origin = url.origin;
+        if (origin === "null") continue;
         if (origin in result) continue;
         const evaled = await this.#waitForFrameEvaluate(
           frame,
@@ -232,6 +233,7 @@ class AnalysisRunner {
       })();
       if (!url) continue;
       const origin = url.origin;
+      if (origin === "null") continue;
       if (origin in result) continue;
       const cookies = await page.cookies(origin);
       result[origin] = Object.fromEntries(
