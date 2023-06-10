@@ -287,7 +287,7 @@ class AnalysisRunner {
       await setupPageRequestInterceptor(page, this.#logger);
       await this.#navigate(page, TIMEOUT_MS_T);
       await this.#delay(TIMEOUT_MS_DELAY_T);
-      this.#logger.setTrackingResultRecordChrome(
+      analysisSpecT.setTrackingResultRecord(
         await this.#evaluateTrackingResultRecord(page)
       );
     });
@@ -300,7 +300,7 @@ class AnalysisRunner {
   }
 
   async runAnalysis() {
-    const chromeAnalysisSpecA: AnalysisSpecA = {
+    const caAnalysisSpec: AnalysisSpecA = {
       browserKeyA: "CA",
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
         this.#logger.setStorageSnapshotRecordChrome(storageSnapshotRecord);
@@ -313,14 +313,14 @@ class AnalysisRunner {
       },
     };
 
-    const chromeAnalysisSpecT: AnalysisSpecT = {
+    const ctAnalysisSpec: AnalysisSpecT = {
       browserKeyT: "CT",
       setTrackingResultRecord: (trackingResultRecord) => {
         this.#logger.setTrackingResultRecordChrome(trackingResultRecord);
       },
     };
 
-    const braveAnalysisSpecA: AnalysisSpecA = {
+    const baAnalysisSpec: AnalysisSpecA = {
       browserKeyA: "BA",
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
         this.#logger.setStorageSnapshotRecordBrave(storageSnapshotRecord);
@@ -333,18 +333,18 @@ class AnalysisRunner {
       },
     };
 
-    const braveAnalysisSpecT: AnalysisSpecT = {
+    const btAnalysisSpec: AnalysisSpecT = {
       browserKeyT: "BT",
       setTrackingResultRecord: (trackingResultRecord) => {
         this.#logger.setTrackingResultRecordBrave(trackingResultRecord);
       },
     };
 
-    await this.#runSiteAnalysisA(chromeAnalysisSpecA);
+    await this.#runSiteAnalysisA(caAnalysisSpec);
     await Promise.allSettled([
-      this.#runSiteAnalysisA(braveAnalysisSpecA),
-      this.#runSiteAnalysisT(chromeAnalysisSpecT),
-      this.#runSiteAnalysisT(braveAnalysisSpecT),
+      this.#runSiteAnalysisA(baAnalysisSpec),
+      this.#runSiteAnalysisT(ctAnalysisSpec),
+      this.#runSiteAnalysisT(btAnalysisSpec),
     ]);
   }
 }

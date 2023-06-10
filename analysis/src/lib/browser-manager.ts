@@ -11,15 +11,12 @@ export { BrowserKey };
 class BrowserManager {
   #proxyPort: number;
   #proxyCaFingerprint: string;
-  #headless: boolean;
 
   #browsers: BrowserStore | null;
 
   constructor(options: BrowserManagerOptions) {
     this.#proxyPort = options.proxyPort;
     this.#proxyCaFingerprint = options.proxyCaFingerprint;
-    this.#headless =
-      typeof options.headless !== "undefined" ? options.headless : false;
 
     this.#browsers = null;
   }
@@ -64,7 +61,7 @@ class BrowserManager {
     }
   }
 
-  // Initializting Chrome
+  // Initializing Chrome
 
   async #launchBrowserChrome(
     key: BrowserKey,
@@ -82,7 +79,7 @@ class BrowserManager {
           }
         : {}),
       defaultViewport: null,
-      headless: false,
+      headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
       pipe: true,
       userDataDir: path.join("profiles", key),
     });
@@ -107,7 +104,7 @@ class BrowserManager {
           }
         : {}),
       defaultViewport: null,
-      headless: false,
+      headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
       executablePath:
         "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
       pipe: true,
@@ -122,7 +119,6 @@ export default BrowserManager;
 interface BrowserManagerOptions {
   proxyPort: number;
   proxyCaFingerprint: string;
-  headless?: boolean;
 }
 
 export { BrowserManagerOptions };

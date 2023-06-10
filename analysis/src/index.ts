@@ -27,7 +27,6 @@ async function main() {
   const browserManager = new BrowserManager({
     proxyPort: server.port,
     proxyCaFingerprint: caFingerprint,
-    headless: true,
   });
   await browserManager.launchAll();
 
