@@ -256,7 +256,8 @@ class AnalysisRunner {
     });
 
     page.on("response", (response) => {
-      requests.push({ url: response.url(), status: response.status() });
+      const request = response.request();
+      requests.push({ url: response.url(), status: response.status(), type: request.resourceType(), initiator: request.initiator() });
     });
 
     return () => [...requests];

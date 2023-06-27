@@ -2,6 +2,7 @@ import { AnalysisError } from "./analysis-error";
 import { CompactTrackingResult } from "./compact-logfile";
 import { StorageSnapshot } from "./storage-snapshot";
 
+
 type CookieSnapshot = Record<string, string>;
 
 export { CookieSnapshot };
@@ -9,6 +10,8 @@ export { CookieSnapshot };
 type CompactRequest = {
   url: string;
   status: number;
+  type: string;
+  initiator: any;
 };
 
 export { CompactRequest };
@@ -23,7 +26,8 @@ type PACompactLogfile = {
   cookieSnapshotRecordBrave: Record<string, CookieSnapshot | null>;
   requestCollectionChrome: CompactRequest[];
   requestCollectionBrave: CompactRequest[];
-  errorCollection: AnalysisError[];
+  errorCollectionChrome: AnalysisError[];
+  errorCollectionBrave: AnalysisError[];
 };
 
 export { PACompactLogfile };

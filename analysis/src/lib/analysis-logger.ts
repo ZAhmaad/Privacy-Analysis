@@ -20,7 +20,9 @@ class AnalysisLogger {
   #cookieSnapshotRecordBrave: Record<string, CookieSnapshot | null>;
   #requestCollectionChrome: CompactRequest[];
   #requestCollectionBrave: CompactRequest[];
-  #errorCollection: AnalysisError[];
+  #errorCollectionChrome: AnalysisError[];
+  #errorCollectionBrave: AnalysisError[];
+  
 
   constructor(analysisName: string, site: string) {
     this.#analysisName = analysisName;
@@ -33,7 +35,8 @@ class AnalysisLogger {
     this.#cookieSnapshotRecordBrave = {};
     this.#requestCollectionChrome = [];
     this.#requestCollectionBrave = [];
-    this.#errorCollection = [];
+    this.#errorCollectionChrome = [];
+    this.#errorCollectionBrave = [];
   }
 
   setTrackingResultRecordChrome(
@@ -89,8 +92,10 @@ class AnalysisLogger {
   }
 
   addError(error: AnalysisError) {
-    this.#errorCollection.push(error);
+    this.#errorCollectionChrome.push(error);
+    this.#errorCollectionBrave.push(error);
   }
+
 
   async persist(): Promise<void> {
     const compactLogfile: PACompactLogfile = {
@@ -103,7 +108,8 @@ class AnalysisLogger {
       cookieSnapshotRecordBrave: this.#cookieSnapshotRecordBrave,
       requestCollectionChrome: this.#requestCollectionChrome,
       requestCollectionBrave: this.#requestCollectionBrave,
-      errorCollection: this.#errorCollection,
+      errorCollectionChrome: this.#errorCollectionChrome,
+      errorCollectionBrave: this.#errorCollectionBrave,
     };
     await fsPromises.writeFile(
       await this.#touchFile("logs.json"),

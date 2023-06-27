@@ -106,7 +106,7 @@ class BrowserManager {
       defaultViewport: null,
       headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
       executablePath:
-        "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+      '/Applications/Brave Browser 3.app/Contents/MacOS/Brave Browser',
       pipe: true,
       userDataDir: path.join("profiles", key),
     });

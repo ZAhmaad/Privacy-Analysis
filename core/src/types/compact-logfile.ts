@@ -71,6 +71,7 @@ type CompactLogfile = {
   storageSnapshotRecordB1: Record<string, StorageSnapshot | null>;
   storageSnapshotRecordB2: Record<string, StorageSnapshot | null>;
   errorCollection: AnalysisError[];
+ 
 };
 
 export { CompactLogfile };
