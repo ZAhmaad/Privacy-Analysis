@@ -10,6 +10,7 @@ import {
   StorageSnapshot,
   CookieSnapshot,
   CompactRequest,
+  AnalysisError,
 } from "@yuantijs/core";
 
 interface AnalysisSpecA {
@@ -21,6 +22,7 @@ interface AnalysisSpecA {
     cookieSnapshotRecord: Record<string, CookieSnapshot | null>
   ): void;
   setRequestCollection(requestCollection: CompactRequest[]): void;
+  addError: AddErrorCallback;
 }
 
 interface AnalysisSpecT {
@@ -28,7 +30,10 @@ interface AnalysisSpecT {
   setTrackingResultRecord(
     trackingResultRecord: Record<string, CompactTrackingResult | null>
   ): void;
+  addError: AddErrorCallback;
 }
+
+type AddErrorCallback = (error: AnalysisError) => void;
 
 const TIMEOUT_MS = 30 * 1000;
 
@@ -70,7 +75,11 @@ class AnalysisRunner {
     }
   }
 
-  async #navigate(page: Page, timeoutMs?: number): Promise<void> {
+  async #navigate(
+    page: Page,
+    addError: AddErrorCallback,
+    timeoutMs?: number
+  ): Promise<void> {
     const url = this.#url;
     try {
       await page.goto(url, {
@@ -79,9 +88,9 @@ class AnalysisRunner {
       });
     } catch (e) {
       if (e instanceof TimeoutError) {
-        this.#logger.addError({ type: "loading-timeout", url });
+        addError({ type: "loading-timeout", url });
       } else {
-        this.#logger.addError({
+        addError({
           type: "navigation-error",
           url,
           message: e instanceof Error ? e.toString() : "" + e,
@@ -101,7 +110,8 @@ class AnalysisRunner {
 
   async #waitForFrameEvaluate(
     frame: Frame,
-    pageFunction: string
+    pageFunction: string,
+    addError: AddErrorCallback
   ): Promise<unknown> {
     try {
       return await Promise.race([
@@ -112,9 +122,9 @@ class AnalysisRunner {
       ]);
     } catch (e) {
       if (e instanceof TimeoutError) {
-        this.#logger.addError({ type: "evaluation-timeout" });
+        addError({ type: "evaluation-timeout" });
       } else {
-        this.#logger.addError({
+        addError({
           type: "evaluation-error",
           message: e instanceof Error ? e.toString() : "" + e,
         });
@@ -124,7 +134,8 @@ class AnalysisRunner {
   }
 
   async #evaluateTrackingResultRecord(
-    page: Page
+    page: Page,
+    addError: AddErrorCallback
   ): Promise<Record<string, CompactTrackingResult | null>> {
     try {
       const result: Record<string, CompactTrackingResult | null> = {};
@@ -142,7 +153,8 @@ class AnalysisRunner {
         if (urlString in result) continue;
         const evaled = await this.#waitForFrameEvaluate(
           frame,
-          `window.__ytjs_getTrackingResult && window.__ytjs_getTrackingResult()`
+          `window.__ytjs_getTrackingResult && window.__ytjs_getTrackingResult()`,
+          addError
         );
         if (evaled) {
           assert(
@@ -157,7 +169,7 @@ class AnalysisRunner {
       return result;
     } catch (e) {
       if (e instanceof AssertionError) {
-        this.#logger.addError({
+        addError({
           type: "assertion-error",
           message: e.message,
         });
@@ -167,7 +179,8 @@ class AnalysisRunner {
   }
 
   async #evaluateStorageSnapshotRecord(
-    page: Page
+    page: Page,
+    addError: AddErrorCallback
   ): Promise<Record<string, StorageSnapshot>> {
     try {
       const result: Record<string, StorageSnapshot> = {};
@@ -196,7 +209,8 @@ class AnalysisRunner {
     return snapshot;
   }
   return { localStorage: takeSnapshot(window.localStorage), sessionStorage: takeSnapshot(window.sessionStorage) };
-})()`
+})()`,
+          addError
         );
         assert(
           validateStorageSnapshot(evaled),
@@ -207,7 +221,7 @@ class AnalysisRunner {
       return result;
     } catch (e) {
       if (e instanceof AssertionError) {
-        this.#logger.addError({
+        addError({
           type: "assertion-error",
           message: e.message,
         });
@@ -257,7 +271,12 @@ class AnalysisRunner {
 
     page.on("response", (response) => {
       const request = response.request();
-      requests.push({ url: response.url(), status: response.status(), type: request.resourceType(), initiator: request.initiator() });
+      requests.push({
+        url: response.url(),
+        status: response.status(),
+        type: request.resourceType(),
+        initiator: request.initiator(),
+      });
     });
 
     return () => [...requests];
@@ -268,10 +287,13 @@ class AnalysisRunner {
       this.#browserManager.get(analysisSpecA.browserKeyA),
       async (page) => {
         const getRequestCollection = await this.#startRequestRecording(page);
-        await this.#navigate(page);
+        await this.#navigate(page, analysisSpecA.addError);
         await this.#delay();
         analysisSpecA.setStorageSnapshotRecord(
-          await this.#evaluateStorageSnapshotRecord(page)
+          await this.#evaluateStorageSnapshotRecord(
+            page,
+            analysisSpecA.addError
+          )
         );
         analysisSpecA.setCookieSnapshotRecord(
           await this.#evaluateCookieSnapshotRecord(page)
@@ -285,60 +307,90 @@ class AnalysisRunner {
     const browser = this.#browserManager.get(analysisSpecT.browserKeyT);
 
     await this.#openPage(browser, async (page) => {
-      await setupPageRequestInterceptor(page, this.#logger);
-      await this.#navigate(page, TIMEOUT_MS_T);
+      await setupPageRequestInterceptor(page, (error) => {
+        analysisSpecT.addError(error);
+      });
+      await this.#navigate(page, analysisSpecT.addError, TIMEOUT_MS_T);
       await this.#delay(TIMEOUT_MS_DELAY_T);
       analysisSpecT.setTrackingResultRecord(
-        await this.#evaluateTrackingResultRecord(page)
+        await this.#evaluateTrackingResultRecord(page, analysisSpecT.addError)
       );
     });
 
     // this empty navigation should ensure that all cookies/storage items will be eventually set
     await this.#openPage(browser, async (page) => {
-      await this.#navigate(page);
+      await this.#navigate(page, analysisSpecT.addError);
       await this.#delay();
     });
   }
 
   async runAnalysis() {
+    const cAddError = (error: AnalysisError) => {
+      this.#logger.chromeAnalysisLogger.addError(error);
+    };
+
     const caAnalysisSpec: AnalysisSpecA = {
       browserKeyA: "CA",
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
-        this.#logger.setStorageSnapshotRecordChrome(storageSnapshotRecord);
+        this.#logger.chromeAnalysisLogger.setStorageSnapshotRecord(
+          storageSnapshotRecord
+        );
       },
       setCookieSnapshotRecord: (cookieSnapshotRecord) => {
-        this.#logger.setCookieSnapshotRecordChrome(cookieSnapshotRecord);
+        this.#logger.chromeAnalysisLogger.setCookieSnapshotRecord(
+          cookieSnapshotRecord
+        );
       },
       setRequestCollection: (requestCollection) => {
-        this.#logger.setRequestCollectionChrome(requestCollection);
+        this.#logger.chromeAnalysisLogger.setRequestCollection(
+          requestCollection
+        );
       },
+      addError: cAddError,
     };
 
     const ctAnalysisSpec: AnalysisSpecT = {
       browserKeyT: "CT",
       setTrackingResultRecord: (trackingResultRecord) => {
-        this.#logger.setTrackingResultRecordChrome(trackingResultRecord);
+        this.#logger.chromeAnalysisLogger.setTrackingResultRecord(
+          trackingResultRecord
+        );
       },
+      addError: cAddError,
+    };
+
+    const bAddError = (error: AnalysisError) => {
+      this.#logger.braveAnalysisLogger.addError(error);
     };
 
     const baAnalysisSpec: AnalysisSpecA = {
       browserKeyA: "BA",
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
-        this.#logger.setStorageSnapshotRecordBrave(storageSnapshotRecord);
+        this.#logger.braveAnalysisLogger.setStorageSnapshotRecord(
+          storageSnapshotRecord
+        );
       },
       setCookieSnapshotRecord: (cookieSnapshotRecord) => {
-        this.#logger.setCookieSnapshotRecordBrave(cookieSnapshotRecord);
+        this.#logger.braveAnalysisLogger.setCookieSnapshotRecord(
+          cookieSnapshotRecord
+        );
       },
       setRequestCollection: (requestCollection) => {
-        this.#logger.setRequestCollectionBrave(requestCollection);
+        this.#logger.braveAnalysisLogger.setRequestCollection(
+          requestCollection
+        );
       },
+      addError: bAddError,
     };
 
     const btAnalysisSpec: AnalysisSpecT = {
       browserKeyT: "BT",
       setTrackingResultRecord: (trackingResultRecord) => {
-        this.#logger.setTrackingResultRecordBrave(trackingResultRecord);
+        this.#logger.braveAnalysisLogger.setTrackingResultRecord(
+          trackingResultRecord
+        );
       },
+      addError: bAddError,
     };
 
     await this.#runSiteAnalysisA(caAnalysisSpec);

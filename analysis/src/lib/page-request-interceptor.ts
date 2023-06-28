@@ -1,9 +1,9 @@
 import { Page } from "puppeteer";
-import AnalysisLogger from "./analysis-logger";
+import { AnalysisError } from "@yuantijs/core";
 
 async function setupPageRequestInterceptor(
   page: Page,
-  logger: AnalysisLogger
+  onError: (error: AnalysisError) => void
 ): Promise<void> {
   await page.setRequestInterception(true);
 
@@ -18,7 +18,7 @@ async function setupPageRequestInterceptor(
 
   page.on("response", (response) => {
     if (response.status() === 502) {
-      logger.addError({ type: "instrumentation-failure", url: response.url() });
+      onError({ type: "instrumentation-failure", url: response.url() });
     }
   });
 
@@ -26,7 +26,7 @@ async function setupPageRequestInterceptor(
     if (message.type() === "error") {
       const errorStack = message.text();
       if (errorStack.indexOf("\n    at YuantijsAnalysis.") !== -1) {
-        logger.addError({
+        onError({
           type: "runtime-error",
           message: errorStack,
         });
