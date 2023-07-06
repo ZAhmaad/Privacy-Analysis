@@ -1260,6 +1260,19 @@ namespace Jalangi.Yuantijs {
             url: args[0],
           })
         );
+      } else if (base instanceof HTMLElement) {
+        let taint: Taint = BOTTOM;
+        for (let i = 0; i < args.length; ++i) {
+          taint = join(taint, join(argsTaint[i], memory.getIntrinsic(i)));
+        }
+        collectFlow(
+          taint,
+          Label("HTMLElement[f]()", Location(iid), {
+            tagName: base.tagName,
+            f: f.name,
+            args: [...args].map((arg) => "" + arg),
+          })
+        );
       }
     }
 
@@ -1358,10 +1371,12 @@ namespace Jalangi.Yuantijs {
             })
           );
         }
-      } else if (offset === "src" && base instanceof HTMLElement) {
+      } else if (base instanceof HTMLElement) {
         collectFlow(
           join(valTaint, memory.getIntrinsic(val)),
-          Label(`HTMLElement[src]`, Location(iid), {
+          Label(`HTMLElement[key]`, Location(iid), {
+            tagName: base.tagName,
+            key: "" + offset,
             value: "" + val,
           })
         );
