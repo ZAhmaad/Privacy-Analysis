@@ -8,12 +8,17 @@ async function setupPageRequestInterceptor(
   await page.setRequestInterception(true);
 
   page.on("request", (request) => {
-    request.continue({
-      headers: {
-        ...request.headers(),
-        "x-ytjs-resource-type": request.resourceType(),
+    if (request.isInterceptResolutionHandled()) return;
+
+    request.continue(
+      {
+        headers: {
+          ...request.headers(),
+          "x-ytjs-resource-type": request.resourceType(),
+        },
       },
-    });
+      1
+    );
   });
 
   page.on("response", (response) => {

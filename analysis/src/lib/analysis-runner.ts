@@ -1,4 +1,4 @@
-import { Browser,  Frame, Page, TimeoutError } from "puppeteer"
+import { Browser, Frame, Page, TimeoutError } from "puppeteer";
 import { setupPageRequestInterceptor } from "./page-request-interceptor";
 import AnalysisLogger from "./analysis-logger";
 import assert, { AssertionError } from "assert";
@@ -273,7 +273,9 @@ class AnalysisRunner {
     await page.setRequestInterception(true);
 
     page.on("request", (request) => {
-      request.continue();
+      if (request.isInterceptResolutionHandled()) return;
+
+      request.continue(request.continueRequestOverrides(), 1);
     });
 
     page.on("response", (response) => {
@@ -325,16 +327,12 @@ class AnalysisRunner {
       );
 
       analysisSpecT.setStorageSnapshotRecord(
-        await this.#evaluateStorageSnapshotRecord(
-          page,
-          analysisSpecT.addError
-        )
+        await this.#evaluateStorageSnapshotRecord(page, analysisSpecT.addError)
       );
       analysisSpecT.setCookieSnapshotRecord(
         await this.#evaluateCookieSnapshotRecord(page)
       );
       analysisSpecT.setRequestCollection(getRequestCollection());
-      
     });
 
     // this empty navigation should ensure that all cookies/storage items will be eventually set
@@ -369,7 +367,7 @@ class AnalysisRunner {
     //   addError: cAddError,
     // };
 
-    const ctAnalysisSpec: AnalysisSpecT  = {
+    const ctAnalysisSpec: AnalysisSpecT = {
       browserKeyT: "CT",
       setTrackingResultRecord: (trackingResultRecord) => {
         this.#logger.chromeAnalysisLogger.setTrackingResultRecord(
@@ -392,7 +390,6 @@ class AnalysisRunner {
           requestCollection
         );
       },
-
 
       addError: cAddError,
     };
