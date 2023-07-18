@@ -1,4 +1,6 @@
-import { Browser, Frame, Page, TimeoutError } from "puppeteer";
+import { BrowserContext as Browser,  Frame, Page } from "playwright"
+import { errors } from "playwright";
+
 import { setupPageRequestInterceptor } from "./page-request-interceptor";
 import AnalysisLogger from "./analysis-logger";
 import assert, { AssertionError } from "assert";
@@ -87,7 +89,7 @@ class AnalysisRunner {
         timeout: timeoutMs || TIMEOUT_MS,
       });
     } catch (e) {
-      if (e instanceof TimeoutError) {
+      if (e instanceof errors.TimeoutError) {
         addError({ type: "loading-timeout", url });
       } else {
         addError({
@@ -117,11 +119,11 @@ class AnalysisRunner {
       return await Promise.race([
         frame.evaluate(pageFunction),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new TimeoutError()), TIMEOUT_MS_EVAL)
+          setTimeout(() => reject(new errors.TimeoutError()), TIMEOUT_MS_EVAL)
         ),
       ]);
     } catch (e) {
-      if (e instanceof TimeoutError) {
+      if (e instanceof errors.TimeoutError) {
         addError({ type: "evaluation-timeout" });
       } else {
         addError({
@@ -249,7 +251,7 @@ class AnalysisRunner {
       const origin = url.origin;
       if (origin === "null") continue;
       if (origin in result) continue;
-      const cookies = await page.cookies(origin);
+      const cookies = await page.context().cookies(origin);
       result[origin] = Object.fromEntries(
         cookies.map((cookie) => [cookie.name, cookie.value])
       );
@@ -263,10 +265,16 @@ class AnalysisRunner {
   async #startRequestRecording(page: Page): Promise<() => CompactRequest[]> {
     const requests: CompactRequest[] = [];
 
-    await page.setRequestInterception(true);
+
+    await page.route('**', (route: any) => {
+      route.continue().catch(() => {});
+    });
+    
+    // await page.setRequestInterception(true);
+    
 
     page.on("request", (request) => {
-      request.continue();
+      request.continue().catch();
     });
 
     page.on("response", (response) => {
@@ -275,7 +283,6 @@ class AnalysisRunner {
         url: response.url(),
         status: response.status(),
         type: request.resourceType(),
-        initiator: request.initiator(),
       });
     });
 

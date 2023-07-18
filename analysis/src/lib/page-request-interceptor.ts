@@ -1,11 +1,15 @@
-import { Page } from "puppeteer";
+import { Page } from "playwright";
 import { AnalysisError } from "@yuantijs/core";
 
 async function setupPageRequestInterceptor(
   page: Page,
   onError: (error: AnalysisError) => void
 ): Promise<void> {
-  await page.setRequestInterception(true);
+  // await page.setRequestInterception(true);
+  await page.route('**', (route: any) => {
+    route.continue().catch(() => {});
+  });
+  
 
   page.on("request", (request) => {
     request.continue({

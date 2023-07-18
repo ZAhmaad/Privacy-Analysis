@@ -1,9 +1,12 @@
 import assert from "assert";
 import path from "path";
-import puppeteer, { Browser } from "puppeteer";
+// import puppeteer, { Browser } from "puppeteer";
+import  {chromium, BrowserContext as Browser}  from "playwright";
+
 
 // Define four browsers: CA and CT are for Chrome and BA and BT are brave
-type BrowserStore = { CA: Browser; CT: Browser; BA: Browser; BT: Browser };
+type BrowserStore = { CA: Browser; CT: Browser; BA: Browser; BT: Browser};
+
 type BrowserKey = keyof BrowserStore;
 
 export { BrowserKey };
@@ -67,7 +70,7 @@ class BrowserManager {
     key: BrowserKey,
     proxyEnabled: boolean
   ): Promise<Browser> {
-    const browser = await puppeteer.launch({
+    const browser = await chromium.launchPersistentContext(path.join("profiles", key),{
       ...(proxyEnabled
         ? {
             args: [
@@ -78,13 +81,14 @@ class BrowserManager {
             ],
           }
         : {}),
-      defaultViewport: null,
+      
       headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
-      pipe: true,
-      userDataDir: path.join("profiles", key),
+     
+       
     });
     return browser;
   }
+
 
   // Initializing Brave
 
@@ -92,7 +96,7 @@ class BrowserManager {
     key: BrowserKey,
     proxyEnabled: boolean
   ): Promise<Browser> {
-    const browser = await puppeteer.launch({
+    const browser = await chromium.launchPersistentContext(path.join("profiles", key),{
       ...(proxyEnabled
         ? {
             args: [
@@ -103,12 +107,12 @@ class BrowserManager {
             ],
           }
         : {}),
-      defaultViewport: null,
+     
       headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
       executablePath:
       '/Applications/Brave Browser 3.app/Contents/MacOS/Brave Browser',
-      pipe: true,
-      userDataDir: path.join("profiles", key),
+      
+      
     });
     return browser;
   }

@@ -10,7 +10,7 @@ type CompactRequest = {
   url: string;
   status: number;
   type: string;
-  initiator: any;
+  
 };
 
 export { CompactRequest };

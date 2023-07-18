@@ -16,6 +16,7 @@
     "jalangi2": "^0.2.6",
     "minimist": "^1.2.8",
     "mockttp": "^3.7.0",
-    "puppeteer": "^19.7.2"
+    "playwright": "^1.35.1",
+    "playwright-core": "^1.36.0"
   }
 }
