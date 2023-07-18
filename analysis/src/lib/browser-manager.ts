@@ -3,7 +3,7 @@ import path from "path";
 import puppeteer, { Browser } from "puppeteer";
 
 // Define four browsers: CA and CT are for Chrome and BA and BT are brave
-type BrowserStore = { CA: Browser; CT: Browser; BA: Browser; BT: Browser };
+type BrowserStore = {  CT: Browser;  BT: Browser };
 type BrowserKey = keyof BrowserStore;
 
 export { BrowserKey };
@@ -47,9 +47,7 @@ class BrowserManager {
   async launchAll() {
     if (this.#browsers) return;
     this.#browsers = {
-      CA: await this.#launchBrowserChrome("CA", false),
       CT: await this.#launchBrowserChrome("CT", true),
-      BA: await this.#launchBrowserBrave("BA", false),
       BT: await this.#launchBrowserBrave("BT", true),
     };
   }

@@ -1,4 +1,4 @@
-import { Browser, Frame, Page, TimeoutError } from "puppeteer";
+import { Browser,  Frame, Page, TimeoutError } from "puppeteer"
 import { setupPageRequestInterceptor } from "./page-request-interceptor";
 import AnalysisLogger from "./analysis-logger";
 import assert, { AssertionError } from "assert";
@@ -13,8 +13,23 @@ import {
   AnalysisError,
 } from "@yuantijs/core";
 
-interface AnalysisSpecA {
-  browserKeyA: BrowserKey;
+// interface AnalysisSpecA {
+//   browserKeyA: BrowserKey;
+//   setStorageSnapshotRecord(
+//     storageSnapshotRecord: Record<string, StorageSnapshot | null>
+//   ): void;
+//   setCookieSnapshotRecord(
+//     cookieSnapshotRecord: Record<string, CookieSnapshot | null>
+//   ): void;
+//   setRequestCollection(requestCollection: CompactRequest[]): void;
+//   addError: AddErrorCallback;
+// }
+
+interface AnalysisSpecT {
+  browserKeyT: BrowserKey;
+  setTrackingResultRecord(
+    trackingResultRecord: Record<string, CompactTrackingResult | null>
+  ): void;
   setStorageSnapshotRecord(
     storageSnapshotRecord: Record<string, StorageSnapshot | null>
   ): void;
@@ -22,14 +37,6 @@ interface AnalysisSpecA {
     cookieSnapshotRecord: Record<string, CookieSnapshot | null>
   ): void;
   setRequestCollection(requestCollection: CompactRequest[]): void;
-  addError: AddErrorCallback;
-}
-
-interface AnalysisSpecT {
-  browserKeyT: BrowserKey;
-  setTrackingResultRecord(
-    trackingResultRecord: Record<string, CompactTrackingResult | null>
-  ): void;
   addError: AddErrorCallback;
 }
 
@@ -282,31 +289,32 @@ class AnalysisRunner {
     return () => [...requests];
   }
 
-  async #runSiteAnalysisA(analysisSpecA: AnalysisSpecA): Promise<void> {
-    await this.#openPage(
-      this.#browserManager.get(analysisSpecA.browserKeyA),
-      async (page) => {
-        const getRequestCollection = await this.#startRequestRecording(page);
-        await this.#navigate(page, analysisSpecA.addError);
-        await this.#delay();
-        analysisSpecA.setStorageSnapshotRecord(
-          await this.#evaluateStorageSnapshotRecord(
-            page,
-            analysisSpecA.addError
-          )
-        );
-        analysisSpecA.setCookieSnapshotRecord(
-          await this.#evaluateCookieSnapshotRecord(page)
-        );
-        analysisSpecA.setRequestCollection(getRequestCollection());
-      }
-    );
-  }
+  // async #runSiteAnalysisA(analysisSpecA: AnalysisSpecA): Promise<void> {
+  //   await this.#openPage(
+  //     this.#browserManager.get(analysisSpecA.browserKeyA),
+  //     async (page) => {
+  //       const getRequestCollection = await this.#startRequestRecording(page);
+  //       await this.#navigate(page, analysisSpecA.addError);
+  //       await this.#delay();
+  //       analysisSpecA.setStorageSnapshotRecord(
+  //         await this.#evaluateStorageSnapshotRecord(
+  //           page,
+  //           analysisSpecA.addError
+  //         )
+  //       );
+  //       analysisSpecA.setCookieSnapshotRecord(
+  //         await this.#evaluateCookieSnapshotRecord(page)
+  //       );
+  //       analysisSpecA.setRequestCollection(getRequestCollection());
+  //     }
+  //   );
+  // }
 
   async #runSiteAnalysisT(analysisSpecT: AnalysisSpecT): Promise<void> {
     const browser = this.#browserManager.get(analysisSpecT.browserKeyT);
 
     await this.#openPage(browser, async (page) => {
+      const getRequestCollection = await this.#startRequestRecording(page);
       await setupPageRequestInterceptor(page, (error) => {
         analysisSpecT.addError(error);
       });
@@ -315,6 +323,18 @@ class AnalysisRunner {
       analysisSpecT.setTrackingResultRecord(
         await this.#evaluateTrackingResultRecord(page, analysisSpecT.addError)
       );
+
+      analysisSpecT.setStorageSnapshotRecord(
+        await this.#evaluateStorageSnapshotRecord(
+          page,
+          analysisSpecT.addError
+        )
+      );
+      analysisSpecT.setCookieSnapshotRecord(
+        await this.#evaluateCookieSnapshotRecord(page)
+      );
+      analysisSpecT.setRequestCollection(getRequestCollection());
+      
     });
 
     // this empty navigation should ensure that all cookies/storage items will be eventually set
@@ -329,8 +349,34 @@ class AnalysisRunner {
       this.#logger.chromeAnalysisLogger.addError(error);
     };
 
-    const caAnalysisSpec: AnalysisSpecA = {
-      browserKeyA: "CA",
+    // const caAnalysisSpec: AnalysisSpecA = {
+    //   browserKeyA: "CT",
+    //   setStorageSnapshotRecord: (storageSnapshotRecord) => {
+    //     this.#logger.chromeAnalysisLogger.setStorageSnapshotRecord(
+    //       storageSnapshotRecord
+    //     );
+    //   },
+    //   setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+    //     this.#logger.chromeAnalysisLogger.setCookieSnapshotRecord(
+    //       cookieSnapshotRecord
+    //     );
+    //   },
+    //   setRequestCollection: (requestCollection) => {
+    //     this.#logger.chromeAnalysisLogger.setRequestCollection(
+    //       requestCollection
+    //     );
+    //   },
+    //   addError: cAddError,
+    // };
+
+    const ctAnalysisSpec: AnalysisSpecT  = {
+      browserKeyT: "CT",
+      setTrackingResultRecord: (trackingResultRecord) => {
+        this.#logger.chromeAnalysisLogger.setTrackingResultRecord(
+          trackingResultRecord
+        );
+      },
+
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
         this.#logger.chromeAnalysisLogger.setStorageSnapshotRecord(
           storageSnapshotRecord
@@ -346,16 +392,8 @@ class AnalysisRunner {
           requestCollection
         );
       },
-      addError: cAddError,
-    };
 
-    const ctAnalysisSpec: AnalysisSpecT = {
-      browserKeyT: "CT",
-      setTrackingResultRecord: (trackingResultRecord) => {
-        this.#logger.chromeAnalysisLogger.setTrackingResultRecord(
-          trackingResultRecord
-        );
-      },
+
       addError: cAddError,
     };
 
@@ -363,8 +401,34 @@ class AnalysisRunner {
       this.#logger.braveAnalysisLogger.addError(error);
     };
 
-    const baAnalysisSpec: AnalysisSpecA = {
-      browserKeyA: "BA",
+    // const baAnalysisSpec: AnalysisSpecA = {
+    //   browserKeyA: "BT",
+    //   setStorageSnapshotRecord: (storageSnapshotRecord) => {
+    //     this.#logger.braveAnalysisLogger.setStorageSnapshotRecord(
+    //       storageSnapshotRecord
+    //     );
+    //   },
+    //   setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+    //     this.#logger.braveAnalysisLogger.setCookieSnapshotRecord(
+    //       cookieSnapshotRecord
+    //     );
+    //   },
+    //   setRequestCollection: (requestCollection) => {
+    //     this.#logger.braveAnalysisLogger.setRequestCollection(
+    //       requestCollection
+    //     );
+    //   },
+    //   addError: bAddError,
+    // };
+
+    const btAnalysisSpec: AnalysisSpecT = {
+      browserKeyT: "BT",
+      setTrackingResultRecord: (trackingResultRecord) => {
+        this.#logger.braveAnalysisLogger.setTrackingResultRecord(
+          trackingResultRecord
+        );
+      },
+
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
         this.#logger.braveAnalysisLogger.setStorageSnapshotRecord(
           storageSnapshotRecord
@@ -383,19 +447,9 @@ class AnalysisRunner {
       addError: bAddError,
     };
 
-    const btAnalysisSpec: AnalysisSpecT = {
-      browserKeyT: "BT",
-      setTrackingResultRecord: (trackingResultRecord) => {
-        this.#logger.braveAnalysisLogger.setTrackingResultRecord(
-          trackingResultRecord
-        );
-      },
-      addError: bAddError,
-    };
-
-    await this.#runSiteAnalysisA(caAnalysisSpec);
+    // await this.#runSiteAnalysisA(caAnalysisSpec);
     await Promise.allSettled([
-      this.#runSiteAnalysisA(baAnalysisSpec),
+      // this.#runSiteAnalysisA(baAnalysisSpec),
       this.#runSiteAnalysisT(ctAnalysisSpec),
       this.#runSiteAnalysisT(btAnalysisSpec),
     ]);
