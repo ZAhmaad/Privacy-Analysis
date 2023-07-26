@@ -285,6 +285,7 @@ class AnalysisRunner {
         status: response.status(),
         type: request.resourceType(),
         initiator: request.initiator(),
+        postData: request.postData(),
       });
     });
 

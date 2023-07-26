@@ -1222,6 +1222,7 @@ namespace Jalangi.Yuantijs {
           ),
           Label("navigator.sendBeacon", Location(iid), {
             url: "" + args[0],
+            postData: args[1],
           })
         );
       } else if (
@@ -1239,6 +1240,7 @@ namespace Jalangi.Yuantijs {
             ),
             Label("XMLHttpRequest_2", Location(iid), {
               ...XMLHttpRequest_META.get(base),
+              postData: args[0],
             })
           );
         }
@@ -1258,6 +1260,7 @@ namespace Jalangi.Yuantijs {
           Label("fetch_2", Location(iid), {
             method: (args[1] && args[1]["method"]) || "GET",
             url: args[0],
+            postData: args[1]["body"],
           })
         );
       } else if (base instanceof HTMLElement) {

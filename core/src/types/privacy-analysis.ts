@@ -11,6 +11,7 @@ type CompactRequest = {
   status: number;
   type: string;
   initiator: any;
+  postData?: string;
 };
 
 export { CompactRequest };
