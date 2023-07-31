@@ -1,4 +1,4 @@
-import { BrowserContext as Browser,  Frame, Page } from "playwright"
+import { BrowserContext as Browser, Frame, Page } from "playwright";
 import { errors } from "playwright";
 
 import { setupPageRequestInterceptor } from "./page-request-interceptor";
@@ -265,16 +265,8 @@ class AnalysisRunner {
   async #startRequestRecording(page: Page): Promise<() => CompactRequest[]> {
     const requests: CompactRequest[] = [];
 
-
-    await page.route('**', (route: any) => {
-      route.continue().catch(() => {});
-    });
-    
-    // await page.setRequestInterception(true);
-    
-
-    page.on("request", (request) => {
-      request.continue().catch();
+    await page.route("**", (route: any) => {
+      route.continue();
     });
 
     page.on("response", (response) => {

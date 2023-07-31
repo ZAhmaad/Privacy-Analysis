@@ -1,5 +1,4 @@
 import * as mockttp from "mockttp";
-import startProxyServer from "./lib/proxy-server";
 import { startAnalysis } from "./lib/start-analysis";
 import BrowserManager from "./lib/browser-manager";
 import {
@@ -22,19 +21,13 @@ async function main() {
 
   const certOptions = await mockttp.generateCACertificate();
   const caFingerprint = mockttp.generateSPKIFingerprint(certOptions.cert);
-  const server = await startProxyServer(certOptions);
 
-  const browserManager = new BrowserManager({
-    proxyPort: server.port,
-    proxyCaFingerprint: caFingerprint,
-  });
+  const browserManager = new BrowserManager();
   await browserManager.launchAll();
 
   await startAnalysis(browserManager, siteList);
 
   await browserManager.closeAll();
-
-  await server.stop();
 
   console.log("THE END");
 }
