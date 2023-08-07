@@ -3,7 +3,7 @@ import path from "path";
 import puppeteer, { Browser } from "puppeteer";
 
 // Define four browsers: CA and CT are for Chrome and BA and BT are brave
-type BrowserStore = {  CT: Browser;  BT: Browser };
+type BrowserStore = { CA: Browser; CB: Browser;  CT: Browser; BA: Browser; BB: Browser;  BT: Browser };
 type BrowserKey = keyof BrowserStore;
 
 export { BrowserKey };
@@ -48,7 +48,11 @@ class BrowserManager {
     if (this.#browsers) return;
     this.#browsers = {
       CT: await this.#launchBrowserChrome("CT", true),
+      CA: await this.#launchBrowserChrome("CA", false),
+      CB: await this.#launchBrowserChrome("CB", false),
       BT: await this.#launchBrowserBrave("BT", true),
+      BA: await this.#launchBrowserBrave("BA", false),
+      BB: await this.#launchBrowserBrave("BB", false),
     };
   }
 
@@ -73,6 +77,7 @@ class BrowserManager {
               `--ignore-certificate-errors-spki-list=${
                 this.#proxyCaFingerprint
               }`,
+            `--lang=en-US`,
             ],
           }
         : {}),
@@ -98,13 +103,15 @@ class BrowserManager {
               `--ignore-certificate-errors-spki-list=${
                 this.#proxyCaFingerprint
               }`,
+              `--lang=en-US`,
             ],
           }
         : {}),
       defaultViewport: null,
       headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
       executablePath:
-      '/Applications/Brave Browser 3.app/Contents/MacOS/Brave Browser',
+
+      "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
       pipe: true,
       userDataDir: path.join("profiles", key),
     });

@@ -19,6 +19,10 @@ type PACompactBrowserLogfile = {
   trackingResultRecord: Record<string, CompactTrackingResult | null>;
   storageSnapshotRecord: Record<string, StorageSnapshot | null>;
   cookieSnapshotRecord: Record<string, CookieSnapshot | null>;
+  storageSnapshotRecordA: Record<string, StorageSnapshot | null>;
+  cookieSnapshotRecordA: Record<string, CookieSnapshot | null>;
+  storageSnapshotRecordB: Record<string, StorageSnapshot | null>;
+  cookieSnapshotRecordB: Record<string, CookieSnapshot | null>;
   requestCollection: CompactRequest[];
   errorCollection: AnalysisError[];
 };

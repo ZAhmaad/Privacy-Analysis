@@ -14,6 +14,10 @@ class BrowserAnalysisLogger {
   #trackingResultRecord: Record<string, CompactTrackingResult | null>;
   #storageSnapshotRecord: Record<string, StorageSnapshot | null>;
   #cookieSnapshotRecord: Record<string, CookieSnapshot | null>;
+  #storageSnapshotRecordA: Record<string, StorageSnapshot | null>;
+  #cookieSnapshotRecordA: Record<string, CookieSnapshot | null>;
+  #storageSnapshotRecordB: Record<string, StorageSnapshot | null>;
+  #cookieSnapshotRecordB: Record<string, CookieSnapshot | null>;
   #requestCollection: CompactRequest[];
   #errorCollection: AnalysisError[];
 
@@ -21,6 +25,10 @@ class BrowserAnalysisLogger {
     this.#trackingResultRecord = {};
     this.#storageSnapshotRecord = {};
     this.#cookieSnapshotRecord = {};
+    this.#storageSnapshotRecordA = {};
+    this.#cookieSnapshotRecordA = {};
+    this.#storageSnapshotRecordB = {};
+    this.#cookieSnapshotRecordB = {};
     this.#requestCollection = [];
     this.#errorCollection = [];
   }
@@ -43,6 +51,35 @@ class BrowserAnalysisLogger {
     this.#cookieSnapshotRecord = cookieSnapshotRecord;
   }
 
+
+  setStorageSnapshotRecordA(
+    storageSnapshotRecord: Record<string, StorageSnapshot | null>
+  ): void {
+    this.#storageSnapshotRecordA = storageSnapshotRecord;
+  }
+
+  setCookieSnapshotRecordA(
+    cookieSnapshotRecord: Record<string, CookieSnapshot | null>
+  ): void {
+    this.#cookieSnapshotRecordA = cookieSnapshotRecord;
+  }
+
+
+  
+  setStorageSnapshotRecordB(
+    storageSnapshotRecord: Record<string, StorageSnapshot | null>
+  ): void {
+    this.#storageSnapshotRecordB = storageSnapshotRecord;
+  }
+
+  setCookieSnapshotRecordB(
+    cookieSnapshotRecord: Record<string, CookieSnapshot | null>
+  ): void {
+    this.#cookieSnapshotRecordB = cookieSnapshotRecord;
+  }
+  
+  
+
   setRequestCollection(requestCollection: CompactRequest[]): void {
     this.#requestCollection = requestCollection;
   }
@@ -54,8 +91,12 @@ class BrowserAnalysisLogger {
   getCompactBrowserLogfile(): PACompactBrowserLogfile {
     return {
       trackingResultRecord: this.#trackingResultRecord,
-      storageSnapshotRecord: this.#storageSnapshotRecord,
+      storageSnapshotRecordA: this.#storageSnapshotRecordA,
+      storageSnapshotRecordB: this.#storageSnapshotRecordB,
       cookieSnapshotRecord: this.#cookieSnapshotRecord,
+      storageSnapshotRecord: this.#storageSnapshotRecord,
+      cookieSnapshotRecordA: this.#cookieSnapshotRecordA,
+      cookieSnapshotRecordB: this.#cookieSnapshotRecordB,
       requestCollection: this.#requestCollection,
       errorCollection: this.#errorCollection,
     };

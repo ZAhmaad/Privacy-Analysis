@@ -13,17 +13,17 @@ import {
   AnalysisError,
 } from "@yuantijs/core";
 
-// interface AnalysisSpecA {
-//   browserKeyA: BrowserKey;
-//   setStorageSnapshotRecord(
-//     storageSnapshotRecord: Record<string, StorageSnapshot | null>
-//   ): void;
-//   setCookieSnapshotRecord(
-//     cookieSnapshotRecord: Record<string, CookieSnapshot | null>
-//   ): void;
-//   setRequestCollection(requestCollection: CompactRequest[]): void;
-//   addError: AddErrorCallback;
-// }
+interface AnalysisSpecA {
+  browserKeyA: BrowserKey;
+  setStorageSnapshotRecord(
+    storageSnapshotRecord: Record<string, StorageSnapshot | null>
+  ): void;
+  setCookieSnapshotRecord(
+    cookieSnapshotRecord: Record<string, CookieSnapshot | null>
+  ): void;
+  
+  addError: AddErrorCallback;
+}
 
 interface AnalysisSpecT {
   browserKeyT: BrowserKey;
@@ -291,26 +291,26 @@ class AnalysisRunner {
     return () => [...requests];
   }
 
-  // async #runSiteAnalysisA(analysisSpecA: AnalysisSpecA): Promise<void> {
-  //   await this.#openPage(
-  //     this.#browserManager.get(analysisSpecA.browserKeyA),
-  //     async (page) => {
-  //       const getRequestCollection = await this.#startRequestRecording(page);
-  //       await this.#navigate(page, analysisSpecA.addError);
-  //       await this.#delay();
-  //       analysisSpecA.setStorageSnapshotRecord(
-  //         await this.#evaluateStorageSnapshotRecord(
-  //           page,
-  //           analysisSpecA.addError
-  //         )
-  //       );
-  //       analysisSpecA.setCookieSnapshotRecord(
-  //         await this.#evaluateCookieSnapshotRecord(page)
-  //       );
-  //       analysisSpecA.setRequestCollection(getRequestCollection());
-  //     }
-  //   );
-  // }
+  async #runSiteAnalysisA(analysisSpecA: AnalysisSpecA): Promise<void> {
+    await this.#openPage(
+      this.#browserManager.get(analysisSpecA.browserKeyA),
+      async (page) => {
+        
+        await this.#navigate(page, analysisSpecA.addError);
+        await this.#delay();
+        analysisSpecA.setStorageSnapshotRecord(
+          await this.#evaluateStorageSnapshotRecord(
+            page,
+            analysisSpecA.addError
+          )
+        );
+        analysisSpecA.setCookieSnapshotRecord(
+          await this.#evaluateCookieSnapshotRecord(page)
+        );
+        
+      }
+    );
+  }
 
   async #runSiteAnalysisT(analysisSpecT: AnalysisSpecT): Promise<void> {
     const browser = this.#browserManager.get(analysisSpecT.browserKeyT);
@@ -347,25 +347,71 @@ class AnalysisRunner {
       this.#logger.chromeAnalysisLogger.addError(error);
     };
 
-    // const caAnalysisSpec: AnalysisSpecA = {
-    //   browserKeyA: "CT",
-    //   setStorageSnapshotRecord: (storageSnapshotRecord) => {
-    //     this.#logger.chromeAnalysisLogger.setStorageSnapshotRecord(
-    //       storageSnapshotRecord
-    //     );
-    //   },
-    //   setCookieSnapshotRecord: (cookieSnapshotRecord) => {
-    //     this.#logger.chromeAnalysisLogger.setCookieSnapshotRecord(
-    //       cookieSnapshotRecord
-    //     );
-    //   },
-    //   setRequestCollection: (requestCollection) => {
-    //     this.#logger.chromeAnalysisLogger.setRequestCollection(
-    //       requestCollection
-    //     );
-    //   },
-    //   addError: cAddError,
-    // };
+    const caAnalysisSpec: AnalysisSpecA = {
+      browserKeyA: "CA",
+      setStorageSnapshotRecord: (storageSnapshotRecord) => {
+        this.#logger.chromeAnalysisLogger.setStorageSnapshotRecordA(
+          storageSnapshotRecord
+        );
+      },
+      setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+        this.#logger.chromeAnalysisLogger.setCookieSnapshotRecordA(
+          cookieSnapshotRecord
+        );
+      },
+      addError: cAddError,
+    };
+
+
+
+    
+    const cbAnalysisSpec: AnalysisSpecA = {
+      browserKeyA: "CB",
+      setStorageSnapshotRecord: (storageSnapshotRecord) => {
+        this.#logger.chromeAnalysisLogger.setStorageSnapshotRecordB(
+          storageSnapshotRecord
+        );
+      },
+      setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+        this.#logger.chromeAnalysisLogger.setCookieSnapshotRecordB(
+          cookieSnapshotRecord
+        );
+      },
+      addError: cAddError,
+    };
+
+    const baAnalysisSpec: AnalysisSpecA = {
+      browserKeyA: "BA",
+      setStorageSnapshotRecord: (storageSnapshotRecord) => {
+        this.#logger.braveAnalysisLogger.setStorageSnapshotRecordA(
+          storageSnapshotRecord
+        );
+      },
+      setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+        this.#logger.braveAnalysisLogger.setCookieSnapshotRecordA(
+          cookieSnapshotRecord
+        );
+      },
+      addError: cAddError,
+    };
+
+    
+
+    const bbAnalysisSpec: AnalysisSpecA = {
+      browserKeyA: "BB",
+      setStorageSnapshotRecord: (storageSnapshotRecord) => {
+        this.#logger.braveAnalysisLogger.setStorageSnapshotRecordB(
+          storageSnapshotRecord
+        );
+      },
+      setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+        this.#logger.braveAnalysisLogger.setCookieSnapshotRecordB(
+          cookieSnapshotRecord
+        );
+      },
+      addError: cAddError,
+    };
+
 
     const ctAnalysisSpec: AnalysisSpecT = {
       browserKeyT: "CT",
@@ -446,7 +492,10 @@ class AnalysisRunner {
 
     // await this.#runSiteAnalysisA(caAnalysisSpec);
     await Promise.allSettled([
-      // this.#runSiteAnalysisA(baAnalysisSpec),
+      this.#runSiteAnalysisA(baAnalysisSpec),
+      this.#runSiteAnalysisA(caAnalysisSpec),
+      this.#runSiteAnalysisA(bbAnalysisSpec),
+      this.#runSiteAnalysisA(cbAnalysisSpec),
       this.#runSiteAnalysisT(ctAnalysisSpec),
       this.#runSiteAnalysisT(btAnalysisSpec),
     ]);
