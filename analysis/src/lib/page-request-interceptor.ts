@@ -84,6 +84,7 @@ async function setupPageRequestInterceptor(
       });
     } catch {
       onError({ type: "instrumentation-failure", url: response.url() });
+      route.continue();
     }
   });
 
