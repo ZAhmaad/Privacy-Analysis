@@ -1,23 +1,25 @@
 import assert from "assert";
 import path from "path";
-import puppeteer, { Browser } from "puppeteer";
+import { chromium, BrowserContext as Browser } from "playwright";
+import * as env from "../env.json";
 
 // Define four browsers: CA and CT are for Chrome and BA and BT are brave
-type BrowserStore = { CA: Browser; CB: Browser;  CT: Browser; BA: Browser; BB: Browser;  BT: Browser };
+type BrowserStore = {
+  CA: Browser;
+  CB: Browser;
+  CT: Browser;
+  BA: Browser;
+  BB: Browser;
+  BT: Browser;
+};
 type BrowserKey = keyof BrowserStore;
 
 export { BrowserKey };
 
 class BrowserManager {
-  #proxyPort: number;
-  #proxyCaFingerprint: string;
-
   #browsers: BrowserStore | null;
 
-  constructor(options: BrowserManagerOptions) {
-    this.#proxyPort = options.proxyPort;
-    this.#proxyCaFingerprint = options.proxyCaFingerprint;
-
+  constructor() {
     this.#browsers = null;
   }
 
@@ -47,12 +49,12 @@ class BrowserManager {
   async launchAll() {
     if (this.#browsers) return;
     this.#browsers = {
-      CT: await this.#launchBrowserChrome("CT", true),
-      CA: await this.#launchBrowserChrome("CA", false),
-      CB: await this.#launchBrowserChrome("CB", false),
-      BT: await this.#launchBrowserBrave("BT", true),
-      BA: await this.#launchBrowserBrave("BA", false),
-      BB: await this.#launchBrowserBrave("BB", false),
+      CT: await this.#launchBrowserChrome("CT"),
+      CA: await this.#launchBrowserChrome("CA"),
+      CB: await this.#launchBrowserChrome("CB"),
+      BT: await this.#launchBrowserBrave("BT"),
+      BA: await this.#launchBrowserBrave("BA"),
+      BB: await this.#launchBrowserBrave("BB"),
     };
   }
 
@@ -65,65 +67,28 @@ class BrowserManager {
 
   // Initializing Chrome
 
-  async #launchBrowserChrome(
-    key: BrowserKey,
-    proxyEnabled: boolean
-  ): Promise<Browser> {
-    const browser = await puppeteer.launch({
-      ...(proxyEnabled
-        ? {
-            args: [
-              `--proxy-server=127.0.0.1:${this.#proxyPort}`,
-              `--ignore-certificate-errors-spki-list=${
-                this.#proxyCaFingerprint
-              }`,
-            `--lang=en-US`,
-            ],
-          }
-        : {}),
-      defaultViewport: null,
-      headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
-      pipe: true,
-      userDataDir: path.join("profiles", key),
-    });
+  async #launchBrowserChrome(key: BrowserKey): Promise<Browser> {
+    const browser = await chromium.launchPersistentContext(
+      path.join("profiles", key),
+      {
+        headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
+      }
+    );
     return browser;
   }
 
   // Initializing Brave
 
-  async #launchBrowserBrave(
-    key: BrowserKey,
-    proxyEnabled: boolean
-  ): Promise<Browser> {
-    const browser = await puppeteer.launch({
-      ...(proxyEnabled
-        ? {
-            args: [
-              `--proxy-server=127.0.0.1:${this.#proxyPort}`,
-              `--ignore-certificate-errors-spki-list=${
-                this.#proxyCaFingerprint
-              }`,
-              `--lang=en-US`,
-            ],
-          }
-        : {}),
-      defaultViewport: null,
-      headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
-      executablePath:
-
-      "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
-      pipe: true,
-      userDataDir: path.join("profiles", key),
-    });
+  async #launchBrowserBrave(key: BrowserKey): Promise<Browser> {
+    const browser = await chromium.launchPersistentContext(
+      path.join("profiles", key),
+      {
+        headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
+        executablePath: env.bravePath,
+      }
+    );
     return browser;
   }
 }
 
 export default BrowserManager;
-
-interface BrowserManagerOptions {
-  proxyPort: number;
-  proxyCaFingerprint: string;
-}
-
-export { BrowserManagerOptions };

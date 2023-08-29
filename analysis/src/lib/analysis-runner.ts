@@ -1,4 +1,6 @@
-import { Browser, Frame, Page, TimeoutError } from "puppeteer";
+import { BrowserContext as Browser, Frame, Page } from "playwright";
+import { errors } from "playwright";
+
 import { setupPageRequestInterceptor } from "./page-request-interceptor";
 import AnalysisLogger from "./analysis-logger";
 import assert, { AssertionError } from "assert";
@@ -21,7 +23,7 @@ interface AnalysisSpecA {
   setCookieSnapshotRecord(
     cookieSnapshotRecord: Record<string, CookieSnapshot | null>
   ): void;
-  
+
   addError: AddErrorCallback;
 }
 
@@ -94,7 +96,7 @@ class AnalysisRunner {
         timeout: timeoutMs || TIMEOUT_MS,
       });
     } catch (e) {
-      if (e instanceof TimeoutError) {
+      if (e instanceof errors.TimeoutError) {
         addError({ type: "loading-timeout", url });
       } else {
         addError({
@@ -124,11 +126,11 @@ class AnalysisRunner {
       return await Promise.race([
         frame.evaluate(pageFunction),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new TimeoutError()), TIMEOUT_MS_EVAL)
+          setTimeout(() => reject(new errors.TimeoutError()), TIMEOUT_MS_EVAL)
         ),
       ]);
     } catch (e) {
-      if (e instanceof TimeoutError) {
+      if (e instanceof errors.TimeoutError) {
         addError({ type: "evaluation-timeout" });
       } else {
         addError({
@@ -256,7 +258,7 @@ class AnalysisRunner {
       const origin = url.origin;
       if (origin === "null") continue;
       if (origin in result) continue;
-      const cookies = await page.cookies(origin);
+      const cookies = await page.context().cookies(origin);
       result[origin] = Object.fromEntries(
         cookies.map((cookie) => [cookie.name, cookie.value])
       );
@@ -270,12 +272,8 @@ class AnalysisRunner {
   async #startRequestRecording(page: Page): Promise<() => CompactRequest[]> {
     const requests: CompactRequest[] = [];
 
-    await page.setRequestInterception(true);
-
-    page.on("request", (request) => {
-      if (request.isInterceptResolutionHandled()) return;
-
-      request.continue(request.continueRequestOverrides(), 1);
+    await page.route("**", (route: any) => {
+      route.continue();
     });
 
     page.on("response", (response) => {
@@ -284,8 +282,7 @@ class AnalysisRunner {
         url: response.url(),
         status: response.status(),
         type: request.resourceType(),
-        initiator: request.initiator(),
-        postData: request.postData(),
+        postData: request.postData() ?? undefined,
       });
     });
 
@@ -296,7 +293,6 @@ class AnalysisRunner {
     await this.#openPage(
       this.#browserManager.get(analysisSpecA.browserKeyA),
       async (page) => {
-        
         await this.#navigate(page, analysisSpecA.addError);
         await this.#delay();
         analysisSpecA.setStorageSnapshotRecord(
@@ -308,7 +304,6 @@ class AnalysisRunner {
         analysisSpecA.setCookieSnapshotRecord(
           await this.#evaluateCookieSnapshotRecord(page)
         );
-        
       }
     );
   }
@@ -363,9 +358,6 @@ class AnalysisRunner {
       addError: cAddError,
     };
 
-
-
-    
     const cbAnalysisSpec: AnalysisSpecA = {
       browserKeyA: "CB",
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
@@ -396,8 +388,6 @@ class AnalysisRunner {
       addError: cAddError,
     };
 
-    
-
     const bbAnalysisSpec: AnalysisSpecA = {
       browserKeyA: "BB",
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
@@ -412,7 +402,6 @@ class AnalysisRunner {
       },
       addError: cAddError,
     };
-
 
     const ctAnalysisSpec: AnalysisSpecT = {
       browserKeyT: "CT",
