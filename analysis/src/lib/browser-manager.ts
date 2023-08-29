@@ -1,7 +1,7 @@
 import assert from "assert";
 import path from "path";
-import { chromium, BrowserContext as Browser } from "playwright";
-import * as env from "../env.json";
+import { chromium, BrowserContext as Browser, webkit, firefox } from "playwright";
+ import * as env from "../env.json";
 
 // Define four browsers: CA and CT are for Chrome and BA and BT are brave
 type BrowserStore = {
@@ -11,6 +11,12 @@ type BrowserStore = {
   BA: Browser;
   BB: Browser;
   BT: Browser;
+  SA: Browser;
+  SB: Browser;
+  ST: Browser;
+  FA: Browser;
+  FB: Browser;
+  FT: Browser;
 };
 type BrowserKey = keyof BrowserStore;
 
@@ -55,6 +61,13 @@ class BrowserManager {
       BT: await this.#launchBrowserBrave("BT"),
       BA: await this.#launchBrowserBrave("BA"),
       BB: await this.#launchBrowserBrave("BB"),
+      ST: await this.#launchBrowserSafari("ST"),
+      SA: await this.#launchBrowserSafari("SA"),
+      SB: await this.#launchBrowserSafari("SB"),
+      FT: await this.#launchBrowserFirefox("FT"),
+      FA: await this.#launchBrowserFirefox("FA"),
+      FB: await this.#launchBrowserFirefox("FB"),
+
     };
   }
 
@@ -72,6 +85,7 @@ class BrowserManager {
       path.join("profiles", key),
       {
         headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
+        locale: 'en-GB',
       }
     );
     return browser;
@@ -85,10 +99,40 @@ class BrowserManager {
       {
         headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
         executablePath: env.bravePath,
+        locale: 'en-GB',
+
       }
     );
     return browser;
   }
+
+// Initializing Safari
+
+  async #launchBrowserSafari(key: BrowserKey): Promise<Browser> {
+    const browser = await webkit.launchPersistentContext(
+      path.join("profiles", key),
+      {
+        headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
+        locale: 'en-GB',
+      }
+    );
+    return browser;
+  }
+
+  // Initializing Safari
+
+  async #launchBrowserFirefox(key: BrowserKey): Promise<Browser> {
+    const browser = await firefox.launchPersistentContext(
+      path.join("profiles", key),
+      {
+        headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
+        locale: 'en-GB',
+      }
+    );
+    return browser;
+  }
+
+
 }
 
 export default BrowserManager;

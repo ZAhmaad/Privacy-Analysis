@@ -108,12 +108,16 @@ class AnalysisLogger {
   #site: string;
   chromeAnalysisLogger: BrowserAnalysisLogger;
   braveAnalysisLogger: BrowserAnalysisLogger;
+  safariAnalysisLogger: BrowserAnalysisLogger;
+  firefoxAnalysisLogger: BrowserAnalysisLogger;
 
   constructor(analysisName: string, site: string) {
     this.#analysisName = analysisName;
     this.#site = site;
     this.chromeAnalysisLogger = new BrowserAnalysisLogger();
     this.braveAnalysisLogger = new BrowserAnalysisLogger();
+    this.safariAnalysisLogger = new BrowserAnalysisLogger();
+    this.firefoxAnalysisLogger = new BrowserAnalysisLogger();
   }
 
   async persist(): Promise<void> {
@@ -121,6 +125,8 @@ class AnalysisLogger {
       site: this.#site,
       chrome: this.chromeAnalysisLogger.getCompactBrowserLogfile(),
       brave: this.braveAnalysisLogger.getCompactBrowserLogfile(),
+      safari: this.safariAnalysisLogger.getCompactBrowserLogfile(),
+      firefox: this.firefoxAnalysisLogger.getCompactBrowserLogfile(),
     };
     await fsPromises.writeFile(
       await this.#touchFile("logs.json"),

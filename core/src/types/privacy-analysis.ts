@@ -31,6 +31,8 @@ type PACompactLogfile = {
   site: string;
   chrome: PACompactBrowserLogfile;
   brave: PACompactBrowserLogfile;
+  safari: PACompactBrowserLogfile;
+  firefox: PACompactBrowserLogfile;
 };
 
 export { PACompactBrowserLogfile, PACompactLogfile };
