@@ -44,13 +44,13 @@ interface AnalysisSpecT {
 
 type AddErrorCallback = (error: AnalysisError) => void;
 
-const TIMEOUT_MS = 30 * 1000;
+const TIMEOUT_MS = 240 * 1000;
 
-const TIMEOUT_MS_T = 120 * 1000;
+const TIMEOUT_MS_T = 240 * 1000;
 
-const TIMEOUT_MS_EVAL = 30 * 1000;
+const TIMEOUT_MS_EVAL = 60 * 1000;
 
-const TIMEOUT_MS_DELAY = 3 * 1000;
+const TIMEOUT_MS_DELAY = 5 * 1000;
 
 const TIMEOUT_MS_DELAY_T = 5 * 1000;
 
@@ -290,16 +290,19 @@ class AnalysisRunner {
   }
 
   async #runSiteAnalysisA(analysisSpecA: AnalysisSpecA): Promise<void> {
+    const addError: AddErrorCallback = (error) => {
+      analysisSpecA.addError({
+        ...error,
+        browserKey: analysisSpecA.browserKeyA,
+      });
+    };
     await this.#openPage(
       this.#browserManager.get(analysisSpecA.browserKeyA),
       async (page) => {
-        await this.#navigate(page, analysisSpecA.addError);
+        await this.#navigate(page, addError);
         await this.#delay();
         analysisSpecA.setStorageSnapshotRecord(
-          await this.#evaluateStorageSnapshotRecord(
-            page,
-            analysisSpecA.addError
-          )
+          await this.#evaluateStorageSnapshotRecord(page, addError)
         );
         analysisSpecA.setCookieSnapshotRecord(
           await this.#evaluateCookieSnapshotRecord(page)
@@ -309,21 +312,28 @@ class AnalysisRunner {
   }
 
   async #runSiteAnalysisT(analysisSpecT: AnalysisSpecT): Promise<void> {
+    const addError: AddErrorCallback = (error) => {
+      analysisSpecT.addError({
+        ...error,
+        browserKey: analysisSpecT.browserKeyT,
+      });
+    };
+
     const browser = this.#browserManager.get(analysisSpecT.browserKeyT);
 
     await this.#openPage(browser, async (page) => {
       const getRequestCollection = await this.#startRequestRecording(page);
       await setupPageRequestInterceptor(page, (error) => {
-        analysisSpecT.addError(error);
+        addError(error);
       });
-      await this.#navigate(page, analysisSpecT.addError, TIMEOUT_MS_T);
+      await this.#navigate(page, addError, TIMEOUT_MS_T);
       await this.#delay(TIMEOUT_MS_DELAY_T);
       analysisSpecT.setTrackingResultRecord(
-        await this.#evaluateTrackingResultRecord(page, analysisSpecT.addError)
+        await this.#evaluateTrackingResultRecord(page, addError)
       );
 
       analysisSpecT.setStorageSnapshotRecord(
-        await this.#evaluateStorageSnapshotRecord(page, analysisSpecT.addError)
+        await this.#evaluateStorageSnapshotRecord(page, addError)
       );
       analysisSpecT.setCookieSnapshotRecord(
         await this.#evaluateCookieSnapshotRecord(page)
@@ -333,7 +343,7 @@ class AnalysisRunner {
 
     // this empty navigation should ensure that all cookies/storage items will be eventually set
     await this.#openPage(browser, async (page) => {
-      await this.#navigate(page, analysisSpecT.addError);
+      await this.#navigate(page, addError);
       await this.#delay();
     });
   }
@@ -373,12 +383,6 @@ class AnalysisRunner {
       addError: cAddError,
     };
 
-
-
-
-
-    
-
     const ctAnalysisSpec: AnalysisSpecT = {
       browserKeyT: "CT",
       setTrackingResultRecord: (trackingResultRecord) => {
@@ -410,7 +414,6 @@ class AnalysisRunner {
       this.#logger.braveAnalysisLogger.addError(error);
     };
 
-
     const baAnalysisSpec: AnalysisSpecA = {
       browserKeyA: "BA",
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
@@ -440,7 +443,6 @@ class AnalysisRunner {
       },
       addError: bAddError,
     };
-
 
     const btAnalysisSpec: AnalysisSpecT = {
       browserKeyT: "BT",
@@ -472,7 +474,6 @@ class AnalysisRunner {
       this.#logger.safariAnalysisLogger.addError(error);
     };
 
-
     const saAnalysisSpec: AnalysisSpecA = {
       browserKeyA: "SA",
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
@@ -503,8 +504,6 @@ class AnalysisRunner {
       addError: sAddError,
     };
 
-
-
     const stAnalysisSpec: AnalysisSpecT = {
       browserKeyT: "ST",
       setTrackingResultRecord: (trackingResultRecord) => {
@@ -531,12 +530,9 @@ class AnalysisRunner {
       addError: sAddError,
     };
 
-
-
     const fAddError = (error: AnalysisError) => {
       this.#logger.firefoxAnalysisLogger.addError(error);
     };
-
 
     const faAnalysisSpec: AnalysisSpecA = {
       browserKeyA: "FA",
@@ -550,7 +546,7 @@ class AnalysisRunner {
           cookieSnapshotRecord
         );
       },
-      addError: sAddError,
+      addError: fAddError,
     };
 
     const fbAnalysisSpec: AnalysisSpecA = {
@@ -565,10 +561,8 @@ class AnalysisRunner {
           cookieSnapshotRecord
         );
       },
-      addError: sAddError,
+      addError: fAddError,
     };
-
-
 
     const ftAnalysisSpec: AnalysisSpecT = {
       browserKeyT: "FT",

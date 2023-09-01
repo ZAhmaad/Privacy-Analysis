@@ -84,7 +84,7 @@ class BrowserManager {
     const browser = await chromium.launchPersistentContext(
       path.join("profiles", key),
       {
-        headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
+        headless: false, // NOTE: it may not work in headful mode and the new implementation of headless mode
         locale: 'en-GB',
       }
     );
@@ -95,9 +95,9 @@ class BrowserManager {
 
   async #launchBrowserBrave(key: BrowserKey): Promise<Browser> {
     const browser = await chromium.launchPersistentContext(
-      path.join("profiles", key),
+      path.join(__dirname,"profiles", key),
       {
-        headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
+        headless: false, // NOTE: it may not work in headful mode and the new implementation of headless mode
         executablePath: env.bravePath,
         locale: 'en-GB',
 
@@ -112,7 +112,7 @@ class BrowserManager {
     const browser = await webkit.launchPersistentContext(
       path.join("profiles", key),
       {
-        headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
+        headless: false, // NOTE: it may not work in headful mode and the new implementation of headless mode
         locale: 'en-GB',
       }
     );
@@ -125,7 +125,7 @@ class BrowserManager {
     const browser = await firefox.launchPersistentContext(
       path.join("profiles", key),
       {
-        headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
+        headless: false, // NOTE: it may not work in headful mode and the new implementation of headless mode
         locale: 'en-GB',
       }
     );
