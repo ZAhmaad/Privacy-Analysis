@@ -13,5 +13,8 @@
     "typescript": "^4.9.5"
   },
   "author": "Samuele Casarin",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "playwright": "^1.38.0"
+  }
 }
