@@ -1,5 +1,5 @@
 import assert from "assert";
-import path from "path";
+import path, { dirname } from "path";
 import { chromium, BrowserContext as Browser, webkit, firefox } from "playwright";
  import * as env from "../env.json";
 
@@ -8,15 +8,19 @@ type BrowserStore = {
   CA: Browser;
   CB: Browser;
   CT: Browser;
+  CC: Browser;
   BA: Browser;
   BB: Browser;
   BT: Browser;
+  BC: Browser;
   SA: Browser;
   SB: Browser;
   ST: Browser;
+  SC: Browser;
   FA: Browser;
   FB: Browser;
   FT: Browser;
+  FC: Browser;
 };
 type BrowserKey = keyof BrowserStore;
 
@@ -58,15 +62,19 @@ class BrowserManager {
       CT: await this.#launchBrowserChrome("CT"),
       CA: await this.#launchBrowserChrome("CA"),
       CB: await this.#launchBrowserChrome("CB"),
+      CC: await this.#launchBrowserChrome("CC"),
       BT: await this.#launchBrowserBrave("BT"),
       BA: await this.#launchBrowserBrave("BA"),
       BB: await this.#launchBrowserBrave("BB"),
+      BC: await this.#launchBrowserBrave("BC"),
       ST: await this.#launchBrowserSafari("ST"),
       SA: await this.#launchBrowserSafari("SA"),
       SB: await this.#launchBrowserSafari("SB"),
+      SC: await this.#launchBrowserSafari("SC"),
       FT: await this.#launchBrowserFirefox("FT"),
       FA: await this.#launchBrowserFirefox("FA"),
       FB: await this.#launchBrowserFirefox("FB"),
+      FC: await this.#launchBrowserFirefox("FC"),
 
     };
   }
@@ -84,8 +92,9 @@ class BrowserManager {
     const browser = await chromium.launchPersistentContext(
       path.join("profiles", key),
       {
-        headless: false, // NOTE: it may not work in headful mode and the new implementation of headless mode
+        headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
         locale: 'en-GB',
+        
       }
     );
     return browser;
@@ -112,7 +121,7 @@ class BrowserManager {
     const browser = await webkit.launchPersistentContext(
       path.join("profiles", key),
       {
-        headless: false, // NOTE: it may not work in headful mode and the new implementation of headless mode
+        headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
         locale: 'en-GB',
       }
     );
@@ -125,7 +134,7 @@ class BrowserManager {
     const browser = await firefox.launchPersistentContext(
       path.join("profiles", key),
       {
-        headless: false, // NOTE: it may not work in headful mode and the new implementation of headless mode
+        headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
         locale: 'en-GB',
       }
     );

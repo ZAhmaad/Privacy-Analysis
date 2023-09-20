@@ -72,7 +72,7 @@ async function setupPageRequestInterceptor(
   onError: (error: AnalysisError) => void
 ): Promise<void> {
   await page.route("**", async (route) => {
-    const response = await route.fetch();
+    const response = await route.fetch({timeout:1200000});
     try {
       route.fulfill({
         response,
