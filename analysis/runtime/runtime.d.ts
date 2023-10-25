@@ -56,6 +56,7 @@ declare namespace Jalangi.Yuantijs {
     labelMap: LabelMap;
     flowCollection: CompactFlow[];
     storageLabelCollection: LabelMapKey[];
+    events: any[];
   }
 }
 
@@ -76,7 +77,7 @@ declare namespace Jalangi {
     _: () => any;
   }
 
-  interface JalangiAnalysis {}
+  interface JalangiAnalysis { }
 }
 
 interface Window {

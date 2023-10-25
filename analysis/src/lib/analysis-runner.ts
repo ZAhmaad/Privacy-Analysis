@@ -25,11 +25,8 @@ interface AnalysisSpecA {
   addError: AddErrorCallback;
 }
 
-interface AnalysisSpecT {
-  browserKeyT: BrowserKey;
-  setTrackingResultRecord(
-    trackingResultRecord: Record<string, CompactTrackingResult | null>
-  ): void;
+interface AnalysisSpecB {
+  browserKeyB: BrowserKey;
   setStorageSnapshotRecord(
     storageSnapshotRecord: Record<string, StorageSnapshot | null>
   ): void;
@@ -37,14 +34,25 @@ interface AnalysisSpecT {
     cookieSnapshotRecord: Record<string, CookieSnapshot | null>
   ): void;
   setRequestCollection(requestCollection: CompactRequest[]): void;
+
+  addError: AddErrorCallback;
+}
+
+
+interface AnalysisSpecT {
+  browserKeyT: BrowserKey;
+  setTrackingResultRecord(
+    trackingResultRecord: Record<string, CompactTrackingResult | null>
+  ): void;
+
   addError: AddErrorCallback;
 }
 
 type AddErrorCallback = (error: AnalysisError) => void;
 
-const TIMEOUT_MS = 30 * 1000;
+const TIMEOUT_MS = 60 * 1000;
 
-const TIMEOUT_MS_T = 120 * 1000;
+const TIMEOUT_MS_T = 180 * 1000;
 
 const TIMEOUT_MS_EVAL = 30 * 1000;
 
@@ -265,17 +273,18 @@ class AnalysisRunner {
     return result;
   }
 
+
+
+
   // Capturing all the Web request urls a site made and their respective status codes.
 
   async #startRequestRecording(page: Page): Promise<() => CompactRequest[]> {
     const requests: CompactRequest[] = [];
 
     await page.setRequestInterception(true);
-
+    
     page.on("request", (request) => {
-      if (request.isInterceptResolutionHandled()) return;
-
-      request.continue(request.continueRequestOverrides(), 1);
+      request.continue();
     });
 
     page.on("response", (response) => {
@@ -284,6 +293,7 @@ class AnalysisRunner {
         url: response.url(),
         status: response.status(),
         type: request.resourceType(),
+        postData: request.postData() ?? undefined,
         initiator: request.initiator(),
       });
     });
@@ -291,58 +301,116 @@ class AnalysisRunner {
     return () => [...requests];
   }
 
+
+
+
   async #runSiteAnalysisA(analysisSpecA: AnalysisSpecA): Promise<void> {
+    const addError: AddErrorCallback = (error) => {
+      analysisSpecA.addError({
+        ...error,
+        browserKey: analysisSpecA.browserKeyA,
+      });
+    };
     await this.#openPage(
       this.#browserManager.get(analysisSpecA.browserKeyA),
       async (page) => {
-        
-        await this.#navigate(page, analysisSpecA.addError);
+        await this.#navigate(page, addError);
         await this.#delay();
         analysisSpecA.setStorageSnapshotRecord(
-          await this.#evaluateStorageSnapshotRecord(
-            page,
-            analysisSpecA.addError
-          )
+          await this.#evaluateStorageSnapshotRecord(page, addError)
         );
         analysisSpecA.setCookieSnapshotRecord(
           await this.#evaluateCookieSnapshotRecord(page)
         );
-        
       }
     );
   }
 
+  async #runSiteAnalysisB(analysisSpecB: AnalysisSpecB): Promise<void> {
+    const addError: AddErrorCallback = (error) => {
+      analysisSpecB.addError({
+        ...error,
+        browserKey: analysisSpecB.browserKeyB,
+      });
+    };
+    await this.#openPage(
+      this.#browserManager.get(analysisSpecB.browserKeyB),
+      async (page) => {
+        const getRequestCollection = await this.#startRequestRecording(page);
+        await this.#navigate(page, addError);
+        await this.#delay();
+        analysisSpecB.setStorageSnapshotRecord(
+          await this.#evaluateStorageSnapshotRecord(page, addError)
+        );
+        analysisSpecB.setCookieSnapshotRecord(
+          await this.#evaluateCookieSnapshotRecord(page)
+        );
+
+        analysisSpecB.setRequestCollection(getRequestCollection());
+      }
+    );
+  }
+
+  // async #runSiteAnalysisA(analysisSpecA: AnalysisSpecA): Promise<void> {
+  //   await this.#openPage(
+  //     this.#browserManager.get(analysisSpecA.browserKeyA),
+  //     async (page) => {
+        
+  //       await this.#navigate(page, analysisSpecA.addError);
+  //       await this.#delay();
+  //       analysisSpecA.setStorageSnapshotRecord(
+  //         await this.#evaluateStorageSnapshotRecord(
+  //           page,
+  //           analysisSpecA.addError
+  //         )
+  //       );
+  //       analysisSpecA.setCookieSnapshotRecord(
+  //         await this.#evaluateCookieSnapshotRecord(page)
+  //       );
+        
+  //     }
+  //   );
+  // }
+
   async #runSiteAnalysisT(analysisSpecT: AnalysisSpecT): Promise<void> {
+
+    const addError: AddErrorCallback = (error) => {
+      analysisSpecT.addError({
+        ...error,
+        browserKey: analysisSpecT.browserKeyT,
+      });
+    };
+
     const browser = this.#browserManager.get(analysisSpecT.browserKeyT);
 
+
+
     await this.#openPage(browser, async (page) => {
-      const getRequestCollection = await this.#startRequestRecording(page);
+      await this.#navigate(page, addError);
+      await this.#delay();
+    });
+
+
+
+    await this.#openPage(browser, async (page) => {
+      
       await setupPageRequestInterceptor(page, (error) => {
-        analysisSpecT.addError(error);
+        addError(error);
       });
-      await this.#navigate(page, analysisSpecT.addError, TIMEOUT_MS_T);
+      await this.#navigate(page, addError, TIMEOUT_MS_T);
       await this.#delay(TIMEOUT_MS_DELAY_T);
       analysisSpecT.setTrackingResultRecord(
-        await this.#evaluateTrackingResultRecord(page, analysisSpecT.addError)
+        await this.#evaluateTrackingResultRecord(page, addError)
       );
 
-      analysisSpecT.setStorageSnapshotRecord(
-        await this.#evaluateStorageSnapshotRecord(page, analysisSpecT.addError)
-      );
-      analysisSpecT.setCookieSnapshotRecord(
-        await this.#evaluateCookieSnapshotRecord(page)
-      );
-      analysisSpecT.setRequestCollection(getRequestCollection());
     });
 
     // this empty navigation should ensure that all cookies/storage items will be eventually set
-    await this.#openPage(browser, async (page) => {
-      await this.#navigate(page, analysisSpecT.addError);
-      await this.#delay();
-    });
+   
   }
 
   async runAnalysis() {
+
     const cAddError = (error: AnalysisError) => {
       this.#logger.chromeAnalysisLogger.addError(error);
     };
@@ -362,9 +430,6 @@ class AnalysisRunner {
       addError: cAddError,
     };
 
-
-
-    
     const cbAnalysisSpec: AnalysisSpecA = {
       browserKeyA: "CB",
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
@@ -380,47 +445,8 @@ class AnalysisRunner {
       addError: cAddError,
     };
 
-    const baAnalysisSpec: AnalysisSpecA = {
-      browserKeyA: "BA",
-      setStorageSnapshotRecord: (storageSnapshotRecord) => {
-        this.#logger.braveAnalysisLogger.setStorageSnapshotRecordA(
-          storageSnapshotRecord
-        );
-      },
-      setCookieSnapshotRecord: (cookieSnapshotRecord) => {
-        this.#logger.braveAnalysisLogger.setCookieSnapshotRecordA(
-          cookieSnapshotRecord
-        );
-      },
-      addError: cAddError,
-    };
-
-    
-
-    const bbAnalysisSpec: AnalysisSpecA = {
-      browserKeyA: "BB",
-      setStorageSnapshotRecord: (storageSnapshotRecord) => {
-        this.#logger.braveAnalysisLogger.setStorageSnapshotRecordB(
-          storageSnapshotRecord
-        );
-      },
-      setCookieSnapshotRecord: (cookieSnapshotRecord) => {
-        this.#logger.braveAnalysisLogger.setCookieSnapshotRecordB(
-          cookieSnapshotRecord
-        );
-      },
-      addError: cAddError,
-    };
-
-
-    const ctAnalysisSpec: AnalysisSpecT = {
-      browserKeyT: "CT",
-      setTrackingResultRecord: (trackingResultRecord) => {
-        this.#logger.chromeAnalysisLogger.setTrackingResultRecord(
-          trackingResultRecord
-        );
-      },
-
+    const ccAnalysisSpec: AnalysisSpecB = {
+      browserKeyB: "CC",
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
         this.#logger.chromeAnalysisLogger.setStorageSnapshotRecord(
           storageSnapshotRecord
@@ -436,42 +462,133 @@ class AnalysisRunner {
           requestCollection
         );
       },
-
       addError: cAddError,
     };
 
-    const bAddError = (error: AnalysisError) => {
-      this.#logger.braveAnalysisLogger.addError(error);
-    };
 
-    // const baAnalysisSpec: AnalysisSpecA = {
-    //   browserKeyA: "BT",
+    // const cAddError = (error: AnalysisError) => {
+    //   this.#logger.chromeAnalysisLogger.addError(error);
+    // };
+
+    // const caAnalysisSpec: AnalysisSpecA = {
+    //   browserKeyA: "CA",
     //   setStorageSnapshotRecord: (storageSnapshotRecord) => {
-    //     this.#logger.braveAnalysisLogger.setStorageSnapshotRecord(
+    //     this.#logger.chromeAnalysisLogger.setStorageSnapshotRecordA(
     //       storageSnapshotRecord
     //     );
     //   },
     //   setCookieSnapshotRecord: (cookieSnapshotRecord) => {
-    //     this.#logger.braveAnalysisLogger.setCookieSnapshotRecord(
+    //     this.#logger.chromeAnalysisLogger.setCookieSnapshotRecordA(
     //       cookieSnapshotRecord
     //     );
     //   },
-    //   setRequestCollection: (requestCollection) => {
-    //     this.#logger.braveAnalysisLogger.setRequestCollection(
-    //       requestCollection
-    //     );
-    //   },
-    //   addError: bAddError,
+    //   addError: cAddError,
     // };
 
-    const btAnalysisSpec: AnalysisSpecT = {
-      browserKeyT: "BT",
+
+
+    
+    // const cbAnalysisSpec: AnalysisSpecA = {
+    //   browserKeyA: "CB",
+    //   setStorageSnapshotRecord: (storageSnapshotRecord) => {
+    //     this.#logger.chromeAnalysisLogger.setStorageSnapshotRecordB(
+    //       storageSnapshotRecord
+    //     );
+    //   },
+    //   setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+    //     this.#logger.chromeAnalysisLogger.setCookieSnapshotRecordB(
+    //       cookieSnapshotRecord
+    //     );
+    //   },
+    //   addError: cAddError,
+    // };
+
+    // const baAnalysisSpec: AnalysisSpecA = {
+    //   browserKeyA: "BA",
+    //   setStorageSnapshotRecord: (storageSnapshotRecord) => {
+    //     this.#logger.braveAnalysisLogger.setStorageSnapshotRecordA(
+    //       storageSnapshotRecord
+    //     );
+    //   },
+    //   setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+    //     this.#logger.braveAnalysisLogger.setCookieSnapshotRecordA(
+    //       cookieSnapshotRecord
+    //     );
+    //   },
+    //   addError: cAddError,
+    // };
+
+    
+
+    // const bbAnalysisSpec: AnalysisSpecA = {
+    //   browserKeyA: "BB",
+    //   setStorageSnapshotRecord: (storageSnapshotRecord) => {
+    //     this.#logger.braveAnalysisLogger.setStorageSnapshotRecordB(
+    //       storageSnapshotRecord
+    //     );
+    //   },
+    //   setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+    //     this.#logger.braveAnalysisLogger.setCookieSnapshotRecordB(
+    //       cookieSnapshotRecord
+    //     );
+    //   },
+    //   addError: cAddError,
+    // };
+
+
+    const ctAnalysisSpec: AnalysisSpecT = {
+      browserKeyT: "CT",
       setTrackingResultRecord: (trackingResultRecord) => {
-        this.#logger.braveAnalysisLogger.setTrackingResultRecord(
+        this.#logger.chromeAnalysisLogger.setTrackingResultRecord(
           trackingResultRecord
         );
       },
 
+
+      addError: cAddError,
+    };
+
+
+
+
+
+    
+    const bAddError = (error: AnalysisError) => {
+      this.#logger.braveAnalysisLogger.addError(error);
+    };
+
+    const baAnalysisSpec: AnalysisSpecA = {
+      browserKeyA: "BA",
+      setStorageSnapshotRecord: (storageSnapshotRecord) => {
+        this.#logger.braveAnalysisLogger.setStorageSnapshotRecordA(
+          storageSnapshotRecord
+        );
+      },
+      setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+        this.#logger.braveAnalysisLogger.setCookieSnapshotRecordA(
+          cookieSnapshotRecord
+        );
+      },
+      addError: bAddError,
+    };
+
+    const bbAnalysisSpec: AnalysisSpecA = {
+      browserKeyA: "BB",
+      setStorageSnapshotRecord: (storageSnapshotRecord) => {
+        this.#logger.braveAnalysisLogger.setStorageSnapshotRecordB(
+          storageSnapshotRecord
+        );
+      },
+      setCookieSnapshotRecord: (cookieSnapshotRecord) => {
+        this.#logger.braveAnalysisLogger.setCookieSnapshotRecordB(
+          cookieSnapshotRecord
+        );
+      },
+      addError: bAddError,
+    };
+
+    const bcAnalysisSpec: AnalysisSpecB = {
+      browserKeyB: "BC",
       setStorageSnapshotRecord: (storageSnapshotRecord) => {
         this.#logger.braveAnalysisLogger.setStorageSnapshotRecord(
           storageSnapshotRecord
@@ -490,14 +607,39 @@ class AnalysisRunner {
       addError: bAddError,
     };
 
+
+
+
+
+    // const bAddError = (error: AnalysisError) => {
+    //   this.#logger.braveAnalysisLogger.addError(error);
+    // };
+
+
+
+    const btAnalysisSpec: AnalysisSpecT = {
+      browserKeyT: "BT",
+      setTrackingResultRecord: (trackingResultRecord) => {
+        this.#logger.braveAnalysisLogger.setTrackingResultRecord(
+          trackingResultRecord
+        );
+      },
+
+      addError: bAddError,
+    };
+
     // await this.#runSiteAnalysisA(caAnalysisSpec);
     await Promise.allSettled([
       this.#runSiteAnalysisA(baAnalysisSpec),
-      this.#runSiteAnalysisA(caAnalysisSpec),
       this.#runSiteAnalysisA(bbAnalysisSpec),
-      this.#runSiteAnalysisA(cbAnalysisSpec),
-      this.#runSiteAnalysisT(ctAnalysisSpec),
+      this.#runSiteAnalysisB(bcAnalysisSpec),
       this.#runSiteAnalysisT(btAnalysisSpec),
+      this.#runSiteAnalysisA(caAnalysisSpec),
+      this.#runSiteAnalysisA(cbAnalysisSpec),
+      this.#runSiteAnalysisB(ccAnalysisSpec),
+      this.#runSiteAnalysisT(ctAnalysisSpec),
+      
+      
     ]);
   }
 }

@@ -8,7 +8,7 @@ async function setupPageRequestInterceptor(
   await page.setRequestInterception(true);
 
   page.on("request", (request) => {
-    if (request.isInterceptResolutionHandled()) return;
+    
 
     request.continue(
       {
@@ -17,7 +17,6 @@ async function setupPageRequestInterceptor(
           "x-ytjs-resource-type": request.resourceType(),
         },
       },
-      1
     );
   });
 

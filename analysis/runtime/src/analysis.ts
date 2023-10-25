@@ -2,6 +2,85 @@
 
 namespace Jalangi.Yuantijs {
   (function (J$: JalangiContext) {
+    let events: any[] = [];
+
+    (function () {
+      const Object_getPrototypeOf = Object.getPrototypeOf;
+      const Object_getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+      const Object_defineProperty = Object.defineProperty;
+      const Reflect_apply = Reflect.apply;
+
+
+      function getPropertyOwner(object: object, property: string) {
+        for (
+          ;
+          object && !Object_getOwnPropertyDescriptor(object, property);
+          object = Object_getPrototypeOf(object)
+        ) { }
+        return object;
+      }
+
+      function wrapGetter(type: string, object: object, property: string) {
+        const owner = getPropertyOwner(object, property);
+        const desc = Object_getOwnPropertyDescriptor(owner, property);
+        if (!desc) {
+          console.error("cannot wrap getter: desc is undefined");
+          return;
+        }
+        const getter = desc.get;
+        if (typeof getter !== "function") {
+          console.error("cannot wrap getter: getter is not a function");
+          return;
+        }
+        const wrapperGetter = function () {
+          // @ts-ignore
+          const value = Reflect_apply(getter, this, arguments);
+          events = [...events, { type, value }];
+          return value;
+        };
+        Object_defineProperty(owner, property, {
+          configurable: desc.configurable,
+          enumerable: desc.enumerable,
+          get: wrapperGetter,
+          set: desc.set,
+        });
+      }
+
+      wrapGetter("document.cookie", window.document, "cookie");
+
+      function wrapMethod(type: string, object: object, property: string) {
+        const owner = getPropertyOwner(object, property);
+        const desc = Object_getOwnPropertyDescriptor(owner, property);
+        if (!desc) {
+          console.error("cannot wrap getter: desc is undefined");
+          return;
+        }
+        const method = desc.value;
+        if (typeof method !== "function") {
+          console.error("cannot wrap getter: method is not a function");
+          return;
+        }
+        const wrapperMethod = function () {
+          // @ts-ignore
+          const value = Reflect_apply(method, this, arguments);
+          events = [...events, { type, args: [...arguments] }];
+          return value;
+        };
+        Object_defineProperty(owner, property, {
+          configurable: desc.configurable,
+          enumerable: desc.enumerable,
+          value: wrapperMethod,
+          writable: desc.writable,
+        });
+      }
+
+      wrapMethod("localStorage.getItem", window.localStorage, "getItem");
+      wrapMethod("XMLHttpRequest.open", window.XMLHttpRequest.prototype, "open");
+      wrapMethod("XMLHttpRequest.send", window.XMLHttpRequest.prototype, "send");
+      wrapMethod("fetch", window, "fetch");
+    })();
+
+
     const global = window;
 
     const trackingResult: TrackingResult = {
@@ -51,6 +130,7 @@ namespace Jalangi.Yuantijs {
         labelMap,
         flowCollection: compactFlowCollection,
         storageLabelCollection: compactStorageLabelCollection,
+        events,
       };
     }
     global.__ytjs_getTrackingResult = __ytjs_getTrackingResult;
@@ -902,7 +982,7 @@ namespace Jalangi.Yuantijs {
         iid: number,
         instrumentedFileName: string,
         originalFileName: string
-      ): void {}
+      ): void { }
 
       scriptExit(
         iid: number,
@@ -994,7 +1074,7 @@ namespace Jalangi.Yuantijs {
         this.remove();
       }
 
-      endExecution(): void {}
+      endExecution(): void { }
 
       onReady(cb: () => void): void {
         cb();
@@ -1019,7 +1099,7 @@ namespace Jalangi.Yuantijs {
         this.argsTaint = argsTaint;
         this.resultTaint = BOTTOM;
       }
-      enterCallee(thisValue: any, argsValue: any) {}
+      enterCallee(thisValue: any, argsValue: any) { }
       getCalleeThis(thisValue: any): Taint {
         return this.baseTaint;
       }
@@ -1040,7 +1120,7 @@ namespace Jalangi.Yuantijs {
       constructor(inputTaint: Taint) {
         this.taint = inputTaint;
       }
-      enterCallee(thisValue: any, argsValue: any[]): void {}
+      enterCallee(thisValue: any, argsValue: any[]): void { }
       getCalleeThis(thisValue: any): Taint {
         return !isObject(thisValue) ? this.taint : BOTTOM;
       }
@@ -1069,7 +1149,7 @@ namespace Jalangi.Yuantijs {
         this.baseTaint = baseTaint;
         this.resultTaint = join(baseTaint, storedTaint);
       }
-      enterCallee(thisValue: any, argsValue: any[]): void {}
+      enterCallee(thisValue: any, argsValue: any[]): void { }
       getCalleeThis(thisValue: any): Taint {
         return this.baseTaint;
       }
@@ -1097,14 +1177,14 @@ namespace Jalangi.Yuantijs {
         this.baseTaint = baseTaint;
         this.valueTaint = valueTaint;
       }
-      enterCallee(thisValue: any, argsValue: any[]): void {}
+      enterCallee(thisValue: any, argsValue: any[]): void { }
       getCalleeThis(thisValue: any): Taint {
         return this.baseTaint;
       }
       getCalleeArgument(argumentIndex: number, argumentValue: any): Taint {
         return this.valueTaint;
       }
-      leaveCallee(resultValue: any, resultTaint: Taint): void {}
+      leaveCallee(resultValue: any, resultTaint: Taint): void { }
       apply(resultValue: any): Taint {
         return this.valueTaint;
       }
@@ -1116,28 +1196,28 @@ namespace Jalangi.Yuantijs {
       constructor(leftTaint: Taint, rightTaint?: Taint) {
         this.resultTaint = join(leftTaint, rightTaint || BOTTOM);
       }
-      enterCallee(thisValue: any, argsValue: any[]): void {}
+      enterCallee(thisValue: any, argsValue: any[]): void { }
       getCalleeThis(thisValue: any): Taint {
         return BOTTOM;
       }
       getCalleeArgument(argumentIndex: number, argumentValue: any): Taint {
         return BOTTOM;
       }
-      leaveCallee(resultValue: any, resultTaint: Taint): void {}
+      leaveCallee(resultValue: any, resultTaint: Taint): void { }
       apply(resultValue: any): Taint {
         return this.resultTaint;
       }
     }
 
     class BottomContext implements Context {
-      enterCallee(thisValue: any, argsValue: any[]): void {}
+      enterCallee(thisValue: any, argsValue: any[]): void { }
       getCalleeThis(thisValue: any): Taint {
         return BOTTOM;
       }
       getCalleeArgument(argumentIndex: number, argumentValue: any): Taint {
         return BOTTOM;
       }
-      leaveCallee(resultValue: any, resultTaint: Taint): void {}
+      leaveCallee(resultValue: any, resultTaint: Taint): void { }
       apply(resultValue: any): Taint {
         return BOTTOM;
       }
@@ -1222,6 +1302,7 @@ namespace Jalangi.Yuantijs {
           ),
           Label("navigator.sendBeacon", Location(iid), {
             url: "" + args[0],
+            postData: args[1],
           })
         );
       } else if (
@@ -1239,6 +1320,7 @@ namespace Jalangi.Yuantijs {
             ),
             Label("XMLHttpRequest_2", Location(iid), {
               ...XMLHttpRequest_META.get(base),
+              postData: args[0],
             })
           );
         }
@@ -1248,16 +1330,17 @@ namespace Jalangi.Yuantijs {
             argsTaint[0],
             args[1]
               ? join(
-                  memory.getIntrinsic(args[1]),
-                  args[1]["body"]
-                    ? memory.getIntrinsic(args[1]["body"])
-                    : BOTTOM
-                )
+                memory.getIntrinsic(args[1]),
+                args[1]["body"]
+                  ? memory.getIntrinsic(args[1]["body"])
+                  : BOTTOM
+              )
               : BOTTOM
           ),
           Label("fetch_2", Location(iid), {
             method: (args[1] && args[1]["method"]) || "GET",
             url: args[0],
+            postData: args[1]["body"],
           })
         );
       } else if (base instanceof HTMLElement) {
@@ -1431,23 +1514,23 @@ namespace Jalangi.Yuantijs {
           const id = this.#id;
           return super.then(
             onfulfilled &&
-              function (value) {
-                monitor.currentFrame.setCalleeContext(
-                  new UserFunctionContext(BOTTOM, [completionTaintMap.get(id)!])
-                );
-                const result = onfulfilled(value);
-                monitor.currentFrame.resetCalleeContext();
-                return result;
-              },
+            function (value) {
+              monitor.currentFrame.setCalleeContext(
+                new UserFunctionContext(BOTTOM, [completionTaintMap.get(id)!])
+              );
+              const result = onfulfilled(value);
+              monitor.currentFrame.resetCalleeContext();
+              return result;
+            },
             onrejected &&
-              function (reason) {
-                monitor.currentFrame.setCalleeContext(
-                  new UserFunctionContext(BOTTOM, [completionTaintMap.get(id)!])
-                );
-                const result = onrejected(reason);
-                monitor.currentFrame.resetCalleeContext();
-                return result;
-              }
+            function (reason) {
+              monitor.currentFrame.setCalleeContext(
+                new UserFunctionContext(BOTTOM, [completionTaintMap.get(id)!])
+              );
+              const result = onrejected(reason);
+              monitor.currentFrame.resetCalleeContext();
+              return result;
+            }
           );
         }
       }
@@ -1460,27 +1543,27 @@ namespace Jalangi.Yuantijs {
         return Promise_prototype_then.call(
           thisPromise,
           onfulfilled &&
-            function (value) {
-              monitor.currentFrame.setCalleeContext(
-                new UserFunctionContext(BOTTOM, [
-                  memory.getIntrinsic(thisPromise),
-                ])
-              );
-              const result = onfulfilled(value);
-              monitor.currentFrame.resetCalleeContext();
-              return result;
-            },
+          function (value) {
+            monitor.currentFrame.setCalleeContext(
+              new UserFunctionContext(BOTTOM, [
+                memory.getIntrinsic(thisPromise),
+              ])
+            );
+            const result = onfulfilled(value);
+            monitor.currentFrame.resetCalleeContext();
+            return result;
+          },
           onrejected &&
-            function (reason) {
-              monitor.currentFrame.setCalleeContext(
-                new UserFunctionContext(BOTTOM, [
-                  memory.getIntrinsic(thisPromise),
-                ])
-              );
-              const result = onrejected(reason);
-              monitor.currentFrame.resetCalleeContext();
-              return result;
-            }
+          function (reason) {
+            monitor.currentFrame.setCalleeContext(
+              new UserFunctionContext(BOTTOM, [
+                memory.getIntrinsic(thisPromise),
+              ])
+            );
+            const result = onrejected(reason);
+            monitor.currentFrame.resetCalleeContext();
+            return result;
+          }
         );
       };
     }

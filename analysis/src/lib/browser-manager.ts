@@ -3,7 +3,7 @@ import path from "path";
 import puppeteer, { Browser } from "puppeteer";
 
 // Define four browsers: CA and CT are for Chrome and BA and BT are brave
-type BrowserStore = { CA: Browser; CB: Browser;  CT: Browser; BA: Browser; BB: Browser;  BT: Browser };
+type BrowserStore = { CA: Browser; CB: Browser; CC: Browser; CT: Browser; BA: Browser; BB: Browser; BC: Browser; BT: Browser };
 type BrowserKey = keyof BrowserStore;
 
 export { BrowserKey };
@@ -50,9 +50,11 @@ class BrowserManager {
       CT: await this.#launchBrowserChrome("CT", true),
       CA: await this.#launchBrowserChrome("CA", false),
       CB: await this.#launchBrowserChrome("CB", false),
+      CC: await this.#launchBrowserChrome("CC", false),
       BT: await this.#launchBrowserBrave("BT", true),
       BA: await this.#launchBrowserBrave("BA", false),
       BB: await this.#launchBrowserBrave("BB", false),
+      BC: await this.#launchBrowserBrave("BC", false),
     };
   }
 
@@ -72,17 +74,16 @@ class BrowserManager {
     const browser = await puppeteer.launch({
       ...(proxyEnabled
         ? {
-            args: [
-              `--proxy-server=127.0.0.1:${this.#proxyPort}`,
-              `--ignore-certificate-errors-spki-list=${
-                this.#proxyCaFingerprint
-              }`,
+          args: [
+            `--proxy-server=127.0.0.1:${this.#proxyPort}`,
+            `--ignore-certificate-errors-spki-list=${this.#proxyCaFingerprint
+            }`,
             `--lang=en-US`,
-            ],
-          }
+          ],
+        }
         : {}),
       defaultViewport: null,
-      headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
+      headless: false, // NOTE: itmay not work in headful mode and the new implementation of headless mode
       pipe: true,
       userDataDir: path.join("profiles", key),
     });
@@ -98,20 +99,19 @@ class BrowserManager {
     const browser = await puppeteer.launch({
       ...(proxyEnabled
         ? {
-            args: [
-              `--proxy-server=127.0.0.1:${this.#proxyPort}`,
-              `--ignore-certificate-errors-spki-list=${
-                this.#proxyCaFingerprint
-              }`,
-              `--lang=en-US`,
-            ],
-          }
+          args: [
+            `--proxy-server=127.0.0.1:${this.#proxyPort}`,
+            `--ignore-certificate-errors-spki-list=${this.#proxyCaFingerprint
+            }`,
+            `--lang=en-US`,
+          ],
+        }
         : {}),
       defaultViewport: null,
       headless: true, // NOTE: it may not work in headful mode and the new implementation of headless mode
       executablePath:
 
-      "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+        "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
       pipe: true,
       userDataDir: path.join("profiles", key),
     });

@@ -10,6 +10,7 @@ type CompactRequest = {
   url: string;
   status: number;
   type: string;
+  postData: any;
   initiator: any;
 };
 
